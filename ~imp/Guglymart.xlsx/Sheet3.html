@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <!-- <link type="text/css" rel="stylesheet" href="resources/sheet.css"> -->
+    <style type="text/css">
+        /* --------------------- YOUR EXISTING STYLES --------------------- */
+        .ritz .waffle a {
+            color: inherit;
+        }
+
+        .ritz .waffle .s9 {
+            background-color: #ffffff;
+            text-align: left;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        .ritz .waffle .s2 {
+            border-bottom: 1px SOLID transparent;
+            border-right: 1px SOLID transparent;
+            background-color: #ffff00;
+            text-align: center;
+            font-weight: bold;
+            text-decoration: underline;
+            text-decoration-skip-ink: none;
+            -webkit-text-decoration-skip: none;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        .ritz .waffle .s7 {
+            background-color: #ffffff;
+            text-align: center;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        .ritz .waffle .s8 {
+            background-color: #ffffff;
+            text-align: left;
+            font-weight: bold;
+            text-decoration: underline;
+            text-decoration-skip-ink: none;
+            -webkit-text-decoration-skip: none;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        .ritz .waffle .s1 {
+            border-bottom: 1px SOLID transparent;
+            border-right: 1px SOLID transparent;
+            background-color: #ffff00;
+            text-align: center;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        .ritz .waffle .s10 {
+            background-color: #ffffff;
+            text-align: right;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        .ritz .waffle .s3 {
+            background-color: #ffffff;
+            /* text-align: center; */
+            /* font-weight: bold; */
+            /* text-decoration: underline; */
+            text-decoration-skip-ink: none;
+            -webkit-text-decoration-skip: none;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        .ritz .waffle .s11 {
+            border-bottom: 1px SOLID #000000;
+            background-color: #ffffff;
+            text-align: right;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        .ritz .waffle .s12 {
+            border-bottom: 1px SOLID #000000;
+            background-color: #ffffff;
+            text-align: left;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        .ritz .waffle .s13 {
+            border-bottom: 2px SOLID #000000;
+            background-color: #ffffff;
+            text-align: right;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        .ritz .waffle .s4 {
+            border-bottom: 1px SOLID #000000;
+            background-color: #ffffff;
+            text-align: center;
+            font-weight: bold;
+            text-decoration: underline;
+            text-decoration-skip-ink: none;
+            -webkit-text-decoration-skip: none;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        .ritz .waffle .s0 {
+            border-bottom: 1px SOLID transparent;
+            border-right: 1px SOLID transparent;
+            background-color: #ffff00;
+            text-align: center;
+            font-weight: bold;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        .ritz .waffle .s6 {
+            border: unset;
+            /* border-right: 1px SOLID #000000; */
+            background-color: #ffffff;
+            text-align: center;
+            font-weight: bold;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        .ritz .waffle .s5 {
+            border: 1px SOLID #000000;
+            background-color: #ffffff;
+            text-align: left;
+            font-weight: bold;
+            color: #000000;
+            font-family: Verdana;
+            font-size: 10pt;
+            vertical-align: bottom;
+            white-space: nowrap;
+            direction: ltr;
+            padding: 0px 3px 0px 3px;
+        }
+
+        /* --------------------- PRINT STYLES (A4 Portrait) --------------------- */
+        @page {
+            size: A4 portrait;
+            margin: 15mm;
+        }
+
+        @media print {
+
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Hide everything except the main table */
+            body * {
+                visibility: hidden;
+            }
+
+            .grid-container,
+            .grid-container * {
+                visibility: visible;
+            }
+
+            .grid-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                transform-origin: top left;
+                transform: scale(0.93);
+                /* auto-fit for A4 */
+            }
+
+            table.waffle {
+                width: 100%;
+                border-collapse: collapse;
+                page-break-inside: avoid;
+            }
+
+            .waffle td,
+            .waffle th {
+                /* border: 1px solid #000; */
+                padding: 3px;
+            }
+
+            .s0,
+            .s1,
+            .s2,
+            .s4 {
+                text-align: center !important;
+            }
+
+            footer {
+                display: block;
+                position: fixed;
+                bottom: 10mm;
+                left: 0;
+                width: 100%;
+                text-align: center;
+                font-size: 8pt;
+                color: #555;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <center>
+        <div class="ritz grid-container" dir="ltr">
+            <table class="waffle" cellspacing="0" cellpadding="0">
+                <thead>
+               
+
+
+                </thead>
+                <tbody>
+                    <tr style="height: 19px">
+                        
+                        <td class="s0" colspan="8">TITIR FOUNDATION</td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s1" colspan="8">Vill/Town:41/B Haripada Lane , Udayan Apartment Flat no-5</td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s2" colspan="8">P.S: Golf Green, Dist: Kolkata, Pin: 700033, West Bengal</td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s2" colspan="8">Registration No. IV-1603-00147/2024</td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s4" colspan="8">Balance Sheet As On 31.03.2024</td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s5"></td>
+                        <td class="s5">Liabilities</td>
+                        <td class="s5">Amount</td>
+                        <td class="s5">Amount</td>
+                        <td class="s5"></td>
+                        <td class="s5">Assets</td>
+                        <td class="s5">Amount</td>
+                        <td class="s5">Amount</td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s6">General Fund</td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s6">Fixed Assets</td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s3">As Per Last Account</td>
+                        <td class="s3"></td>
+                        <td class="s7"> 88,900.00 </td>
+                        <td class="s3"></td>
+                        <td class="s8">Furniture</td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s3">Add: Net Surplus</td>
+                        <td class="s3"></td>
+                        <td class="s9"> 11,020.00 </td>
+                        <td class="s3"></td>
+                        <td class="s3">As Per Last A/c</td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s9"> 45,500.00 </td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s3">(Excess Income Over Expenditure)</td>
+                        <td class="s3"></td>
+                        <td class="s10"></td>
+                        <td class="s3"></td>
+                        <td class="s8">Computer</td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s7"></td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s9"> 99,920.00 </td>
+                        <td class="s3">As Per Last A/c</td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s9"> 38,900.00 </td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s6">Outstanding Liabilities</td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s3">Add:Sundry Creditors</td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s9"> - </td>
+                        <td class="s6">Cash at Bank</td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3">Indian Bank, Kolkata Ballygunge Br.</td>
+                        <td class="s3"></td>
+                        <td class="s9"> - </td>
+                        <td class="s3"></td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3">A/C No.CA:7815227267</td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s6"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                    </tr>
+                    <tr style="height: 19px">
+                        
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3">Cash In Hand</td>
+                        <td class="s3"></td>
+                        <td class="s11"> 15,520.00 </td>
+                        <td class="s3"></td>
+                    </tr>
+                    <tr style="height: 20px">
+                        
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s9"> 15,520.00 </td>
+                    </tr>
+                    <tr style="height: 20px">
+                        
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                    </tr>
+                    <tr style="height: 20px">
+                        
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s10"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s10"></td>
+                    </tr>
+                    <tr style="height: 20px">
+                        
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s12"> 99,920.00 </td>
+                        <td class="s3"></td>
+                        <td class="s9"> - </td>
+                        <td class="s3"></td>
+                        <td class="s12"> 99,920.00 </td>
+                    </tr>
+                </tbody>
+            </table>
+            <br><br><br><br><br><br><br><br><br><br><br><br>
+
+        </div>
+
+    </center>
+
+</body>
+
+</html>
