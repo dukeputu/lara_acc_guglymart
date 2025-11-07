@@ -4186,38 +4186,29 @@ END downlinesTree**************************************************
 
         // Long Term Borrowing
         $longTermRow = DB::selectOne("
-            SELECT SUM(bank_loan)+SUM(investment_for_invertor) AS TotalBankLoan
-
+            SELECT SUM(bank_loan) AS TotalBankLoan
             FROM monthly_update
             WHERE user_by = ?
         ", [$userId]);
 
         // Membership charge
-        // (Total Daily Colletion Loan * Business Category Daley> Membership Charge) / 10000
         $grandTotalRowMembershipCharge = DB::selectOne("
-
-       SELECT
-      du.user_by,
-
-        COALESCE(SUM(CASE WHEN bp.business_category_name = 'Daily' THEN (du.total_daily_colletion * bp.membership_charge) / 10000 END), 0) AS Daily,
-        COALESCE(SUM(CASE WHEN bp.business_category_name = 'Weekly' THEN (du.total_weekly_colletion * bp.membership_charge) / 10000 END), 0) AS Weekly,
-        COALESCE(SUM(CASE WHEN bp.business_category_name = 'Bi-Weekly' THEN (du.total_bi_weekly_colletion * bp.membership_charge) / 10000 END), 0) AS BiWeekly,
-        COALESCE(SUM(CASE WHEN bp.business_category_name = 'Monthly' THEN (du.total_monthly_colletion * bp.membership_charge) / 10000 END), 0) AS Monthly,
-
-        -- ✅ Grand total is just the sum of all 4
-        (
-            COALESCE(SUM(CASE WHEN bp.business_category_name = 'Daily' THEN (du.total_daily_colletion * bp.membership_charge) / 10000 END), 0) +
-            COALESCE(SUM(CASE WHEN bp.business_category_name = 'Weekly' THEN (du.total_weekly_colletion * bp.membership_charge) / 10000 END), 0) +
-            COALESCE(SUM(CASE WHEN bp.business_category_name = 'Bi-Weekly' THEN (du.total_bi_weekly_colletion * bp.membership_charge) / 10000 END), 0) +
-            COALESCE(SUM(CASE WHEN bp.business_category_name = 'Monthly' THEN (du.total_monthly_colletion * bp.membership_charge) / 10000 END), 0)
-        ) AS grand_total_amount
-
-        FROM daily_update du
-        LEFT JOIN business_plans bp
-            ON bp.user_by = du.user_by
-        WHERE du.user_by = ?
-        GROUP BY du.user_by;
-                ", [$userId]);
+        SELECT
+        SUM(
+            CASE
+                WHEN bp.business_category_name = 'Daily' THEN du.total_daily_colletion * bp.membership_per
+                WHEN bp.business_category_name = 'Weekly' THEN du.total_weekly_colletion * bp.membership_per
+                WHEN bp.business_category_name = 'Bi-Weekly' THEN du.total_bi_weekly_colletion * bp.membership_per
+                WHEN bp.business_category_name = 'Monthly' THEN du.total_monthly_colletion * bp.membership_per
+                ELSE 0
+                    END
+                ) AS grand_total_amount
+            FROM daily_update du
+            LEFT JOIN business_plans bp
+                ON bp.user_by = du.user_by
+            WHERE du.user_by = ?
+            GROUP BY du.user_by
+        ", [$userId]);
 
         $processingChargeOnePercentage = DB::selectOne("
         SELECT
@@ -4238,146 +4229,137 @@ END downlinesTree**************************************************
         ", [$userId]);
 
         // Membership charge
-        // (Total Daily Colletion Loan * Business Category Daley> Interest Amount) / 10000
         $IntarestReceivedOnMicrofinanceLoan = DB::selectOne("
-
-                SELECT
-                du.user_by,
-
-                COALESCE(SUM(CASE WHEN bp.business_category_name = 'Daily' THEN (du.total_daily_colletion * bp.interest_amount) / 10000 END), 0) AS Daily,
-                COALESCE(SUM(CASE WHEN bp.business_category_name = 'Weekly' THEN (du.total_weekly_colletion * bp.interest_amount) / 10000 END), 0) AS Weekly,
-                COALESCE(SUM(CASE WHEN bp.business_category_name = 'Bi-Weekly' THEN (du.total_bi_weekly_colletion * bp.interest_amount) / 10000 END), 0) AS BiWeekly,
-                COALESCE(SUM(CASE WHEN bp.business_category_name = 'Monthly' THEN (du.total_monthly_colletion * bp.interest_amount) / 10000 END), 0) AS Monthly,
-
-                -- ✅ Grand total is just the sum of all 4
-                (
-                    COALESCE(SUM(CASE WHEN bp.business_category_name = 'Daily' THEN (du.total_daily_colletion * bp.interest_amount) / 10000 END), 0) +
-                    COALESCE(SUM(CASE WHEN bp.business_category_name = 'Weekly' THEN (du.total_weekly_colletion * bp.interest_amount) / 10000 END), 0) +
-                    COALESCE(SUM(CASE WHEN bp.business_category_name = 'Bi-Weekly' THEN (du.total_bi_weekly_colletion * bp.interest_amount) / 10000 END), 0) +
-                    COALESCE(SUM(CASE WHEN bp.business_category_name = 'Monthly' THEN (du.total_monthly_colletion * bp.interest_amount) / 10000 END), 0)
+    SELECT
+        SUM(
+            CASE
+                WHEN bp.business_category_name = 'Daily' THEN du.total_daily_colletion * bp.interest_rate
+                WHEN bp.business_category_name = 'Weekly' THEN du.total_weekly_colletion * bp.interest_rate
+                WHEN bp.business_category_name = 'Bi-Weekly' THEN du.total_bi_weekly_colletion * bp.interest_rate
+                WHEN bp.business_category_name = 'Monthly' THEN du.total_monthly_colletion * bp.interest_rate
+                ELSE 0
+                    END
                 ) AS IntarestReceivedOnMicrofinanceLoan
-
             FROM daily_update du
             LEFT JOIN business_plans bp
                 ON bp.user_by = du.user_by
             WHERE du.user_by = ?
-            GROUP BY du.user_by;
-                    ", [$userId]);
+            GROUP BY du.user_by
+        ", [$userId]);
 
         $fundSavingRow = DB::selectOne("
-                SELECT
-                    COALESCE(SUM(du.rd_amount), 0) AS total_rd_amount,
-                    COALESCE(MAX(bp.rd_interest), 0) AS rd_interest,
-                    COALESCE(SUM(du.rd_amount) * MAX(bp.rd_interest) / 100, 0) AS fund_saving_amount
-                FROM daily_update du
-                LEFT JOIN business_plans_rd bp
-                    ON bp.user_by = du.user_by
-                WHERE du.user_by = ?
-                GROUP BY du.user_by
-            ", [$userId]);
+    SELECT
+        COALESCE(SUM(du.rd_amount), 0) AS total_rd_amount,
+        COALESCE(MAX(bp.rd_interest), 0) AS rd_interest,
+        COALESCE(SUM(du.rd_amount) * MAX(bp.rd_interest) / 100, 0) AS fund_saving_amount
+    FROM daily_update du
+    LEFT JOIN business_plans_rd bp
+        ON bp.user_by = du.user_by
+    WHERE du.user_by = ?
+    GROUP BY du.user_by
+", [$userId]);
 
         $penaltyRow = DB::selectOne("
-                SELECT
-                    COALESCE(SUM(other_expences), 0) AS total_other_expences,
-                    COALESCE(SUM(other_expences) * 0.015, 0) AS penalty
-                FROM monthly_update
-                WHERE user_by = ?
-                GROUP BY user_by
-            ", [$userId]);
+    SELECT
+        COALESCE(SUM(other_expences), 0) AS total_other_expences,
+        COALESCE(SUM(other_expences) * 0.00015, 0) AS penalty
+    FROM monthly_update
+    WHERE user_by = ?
+    GROUP BY user_by
+", [$userId]);
 
         $othersRow = DB::selectOne("
-                SELECT
-                    COALESCE(SUM(other_expences), 0) AS total_other_expences,
-                    COALESCE(SUM(other_expences) * 0.025, 0) AS others
-                FROM monthly_update
-                WHERE user_by = ?
-                GROUP BY user_by
-            ", [$userId]);
+    SELECT
+        COALESCE(SUM(other_expences), 0) AS total_other_expences,
+        COALESCE(SUM(other_expences) * 0.00025, 0) AS others
+    FROM monthly_update
+    WHERE user_by = ?
+    GROUP BY user_by
+", [$userId]);
 
         $CollectionLoan = DB::selectOne("
-                SELECT
-                    COALESCE(SUM(total_daily_colletion), 0) AS daily_collection_loan,
-                    COALESCE(SUM(total_weekly_colletion), 0) AS weekly_collection_loan,
-                    COALESCE(SUM(total_bi_weekly_colletion), 0) AS bi_weekly_collection_loan,
-                    COALESCE(SUM(total_monthly_colletion), 0) AS monthly_collection_loan
-                FROM daily_update
-                WHERE user_by = ?
-            ", [$userId]);
+    SELECT
+        COALESCE(SUM(total_daily_colletion), 0) AS daily_collection_loan,
+        COALESCE(SUM(total_weekly_colletion), 0) AS weekly_collection_loan,
+        COALESCE(SUM(total_bi_weekly_colletion), 0) AS bi_weekly_collection_loan,
+        COALESCE(SUM(total_monthly_colletion), 0) AS monthly_collection_loan
+    FROM daily_update
+    WHERE user_by = ?
+", [$userId]);
 
         $fundSavingWithdrawRow = DB::selectOne("
-                SELECT
-                    COALESCE(SUM(rd_withdrawal), 0) AS fund_saving_withdraw
-                FROM daily_update
-                WHERE user_by = ?
-                GROUP BY user_by
-            ", [$userId]);
+    SELECT
+        COALESCE(SUM(rd_withdrawal), 0) AS fund_saving_withdraw
+    FROM daily_update
+    WHERE user_by = ?
+    GROUP BY user_by
+", [$userId]);
 
         $totalRdInterestRow = DB::selectOne("
-                SELECT
-                    COALESCE(SUM(rd_interest), 0) AS total_rd_interest
-                FROM daily_update
-                WHERE user_by = ?
-                GROUP BY user_by
-            ", [$userId]);
+    SELECT
+        COALESCE(SUM(rd_interest), 0) AS total_rd_interest
+    FROM daily_update
+    WHERE user_by = ?
+    GROUP BY user_by
+", [$userId]);
 
         $interestPaidOnLoanRow = DB::selectOne("
-                SELECT
-                    COALESCE(SUM(director_loan) * 0.02, 0) AS interest_paid_on_loan
-                FROM monthly_update
-                WHERE user_by = ?
-                GROUP BY user_by
-            ", [$userId]);
+    SELECT
+        COALESCE(SUM(director_loan) * 0.02, 0) AS interest_paid_on_loan
+    FROM monthly_update
+    WHERE user_by = ?
+    GROUP BY user_by
+", [$userId]);
 
         $otherChargesRowLoanTaken = DB::selectOne("
-                SELECT
-                    COALESCE((SUM(bank_loan)+SUM(investment_for_invertor)) * 0.02, 0) AS other_charges_paid_for_loan_taken
-                FROM monthly_update
-                WHERE user_by = ?
-                GROUP BY user_by
-            ", [$userId]);
+    SELECT
+        COALESCE(SUM(bank_loan) * 0.02, 0) AS other_charges_paid_for_loan_taken
+    FROM monthly_update
+    WHERE user_by = ?
+    GROUP BY user_by
+", [$userId]);
 
         $paidInsuranceChargeRow = DB::selectOne("
-                SELECT
-                    COALESCE(
-                        (
-                            SUM(total_daily_colletion) +
-                            SUM(total_weekly_colletion) +
-                            SUM(total_bi_weekly_colletion) +
-                            SUM(total_monthly_colletion)
-                        ) * 0.01, 0
-                    ) AS paid_insurance_charge
-                FROM daily_update
-                WHERE user_by = ?
-                GROUP BY user_by
-            ", [$userId]);
+    SELECT
+        COALESCE(
+            (
+                SUM(total_daily_colletion) +
+                SUM(total_weekly_colletion) +
+                SUM(total_bi_weekly_colletion) +
+                SUM(total_monthly_colletion)
+            ) * 0.01, 0
+        ) AS paid_insurance_charge
+    FROM daily_update
+    WHERE user_by = ?
+    GROUP BY user_by
+", [$userId]);
 
         $monthlyUpdateRow = DB::selectOne("
-                SELECT
-                    COALESCE(SUM(director_salary), 0) AS director_salary,
-                    COALESCE(SUM(staff_salary), 0) AS staff_salary,
-                    COALESCE(SUM(other_expences) * 0.01, 0) AS staff_uniform_id_card,
-                    COALESCE(SUM(other_expences) * 0.02, 0) AS staff_training,
-                    COALESCE(SUM(other_expences) * 0.2, 0) AS customer_awareness_camp,
-                    COALESCE(SUM(other_expences) * 0.22, 0) AS cultural_programme,
-                    COALESCE(SUM(other_expences) * 0.35, 0) AS social_welfare_activity,
-                    COALESCE(SUM(office_rent), 0) AS office_rent,
-                    COALESCE(SUM(electricity_bill), 0) AS electricity_bill,
-                    COALESCE(SUM(recharge_bill), 0) AS internet_mobile_recharge,
-                    COALESCE(SUM(other_expences) * 0.017, 0) AS marketing_cost
-                FROM monthly_update
-                WHERE user_by = ?
-                GROUP BY user_by
-            ", [$userId]);
+    SELECT
+        COALESCE(SUM(director_salary), 0) AS director_salary,
+        COALESCE(SUM(staff_salary), 0) AS staff_salary,
+        COALESCE(SUM(other_expences) * 0.0001, 0) AS staff_uniform_id_card,
+        COALESCE(SUM(other_expences) * 0.0002, 0) AS staff_training,
+        COALESCE(SUM(other_expences) * 0.002, 0) AS customer_awareness_camp,
+        COALESCE(SUM(other_expences) * 0.0022, 0) AS cultural_programme,
+        COALESCE(SUM(other_expences) * 0.0035, 0) AS social_welfare_activity,
+        COALESCE(SUM(office_rent), 0) AS office_rent,
+        COALESCE(SUM(electricity_bill), 0) AS electricity_bill,
+        COALESCE(SUM(recharge_bill), 0) AS internet_mobile_recharge,
+        COALESCE(SUM(other_expences) * 0.00017, 0) AS marketing_cost
+    FROM monthly_update
+    WHERE user_by = ?
+    GROUP BY user_by
+", [$userId]);
 
         $leftSideSum = [
-
             'short_term_borrowing'               => $shortTermRow->TotalDirectorLoan ?? 0,
             'long_term_borrowing'                => $longTermRow->TotalBankLoan ?? 0,
             'membership_charge'                  => $grandTotalRowMembershipCharge->grand_total_amount ?? 0,
             'processing_charge'                  => $processingChargeOnePercentage->processing_charge ?? 0,
             'insurance_charge'                   => $insuranceChargeTwoPercentage->insurance_charge ?? 0,
             'IntarestReceivedOnMicrofinanceLoan' => $IntarestReceivedOnMicrofinanceLoan->IntarestReceivedOnMicrofinanceLoan ?? 0,
-            'fund_saving_amount'                 => $fundSavingRow->total_rd_amount ?? 0,
+            'fund_saving_amount'                 => $fundSavingRow->fund_saving_amount ?? 0,
             'penalty'                            => $penaltyRow->penalty ?? 0,
             'others'                             => $othersRow->others ?? 0,
         ];
@@ -4405,71 +4387,34 @@ END downlinesTree**************************************************
             'marketing_cost'                    => $monthlyUpdateRow->marketing_cost ?? 0,
         ];
 
+        // Calculate Other General Cost
+        $otherGeneralCost = array_sum($leftSideSum) - array_sum($rightSideSum);
+
+        $rightSideSumTotal = $otherGeneralCost + array_sum($rightSideSum);
+
         $balances = DB::selectOne("
-        SELECT
-            COALESCE(SUM(today_closing_balance_ac), 0) AS closing_balance_bank,
-            COALESCE(SUM(today_closing_balance_cash), 0) AS cash_in_hand
-        FROM
-            daily_update
-        WHERE
-            user_by = ?
-        ", [$userId]);
-
-        
-
-        // $opening_cash_in_hand  = $balances->cash_in_hand ?? 0;
-        // $opening_cash_in_bank  = $balances->closing_balance_bank ?? 0;
-        $opening_cash_in_hand  = 786254;
-        $opening_cash_in_bank  = 130000;
-        $total_opening_balance = (float) $opening_cash_in_hand + (float) $opening_cash_in_bank;
-
-        $lift_side_gran_total_balance = array_sum($leftSideSum) + (float) $total_opening_balance;
-
-// ********************
-
-        $total_cloes_balance = (float) $balances->closing_balance_bank + (float) $balances->cash_in_hand;
-
-// Step 1: temporarily set to 0
-        $other_general_cost = 0;
-
-// Step 2: calculate right side (initially without general cost)
-        $right_side_round              = array_sum($rightSideSum) + $other_general_cost;
-        $right_side_gran_total_balance = $right_side_round + $total_cloes_balance;
-
-// Step 3: now calculate the actual general cost difference
-        $other_general_cost =  $lift_side_gran_total_balance - $right_side_gran_total_balance;
-
-// ✅ Step 4: recalculate right-side totals including the final general cost
-        $right_side_round              = array_sum($rightSideSum) + $other_general_cost;
-        $right_side_gran_total_balance = $right_side_round + $total_cloes_balance;
-
-        // To	Net Surplus
-        $ToNetSurplus= array_sum($leftSideSum) - (array_sum($rightSideSum) + $other_general_cost);
-
-        // (Excess Income Over Expenditure)	
-        $ExcessIncomeOver = (array_sum($rightSideSum) + $other_general_cost) + $ToNetSurplus;
+    SELECT
+        COALESCE(SUM(today_closing_balance_ac), 0) AS closing_balance,
+        COALESCE(SUM(today_closing_balance_cash), 0) AS cash_in_hand
+    FROM
+        daily_update
+    WHERE
+        user_by = ?
+    ", [$userId]);
 
         return [
-            // 'leftSide Start
-            'opening_cash_in_hand'               => $opening_cash_in_hand ?? 0,
-            'opening_cash_in_bank'               => $opening_cash_in_bank ?? 0,
             'short_term_borrowing'               => $shortTermRow->TotalDirectorLoan ?? 0,
             'long_term_borrowing'                => $longTermRow->TotalBankLoan ?? 0,
             'membership_charge'                  => $grandTotalRowMembershipCharge->grand_total_amount ?? 0,
             'processing_charge'                  => $processingChargeOnePercentage->processing_charge ?? 0,
             'insurance_charge'                   => $insuranceChargeTwoPercentage->insurance_charge ?? 0,
             'IntarestReceivedOnMicrofinanceLoan' => $IntarestReceivedOnMicrofinanceLoan->IntarestReceivedOnMicrofinanceLoan ?? 0,
-            'fund_saving_amount'                 => $fundSavingRow->total_rd_amount ?? 0,
+            'fund_saving_amount'                 => $fundSavingRow->fund_saving_amount ?? 0,
             'penalty'                            => $penaltyRow->penalty ?? 0,
             'others'                             => $othersRow->others ?? 0,
             'leftSideSum'                        => array_sum($leftSideSum) ?? 0,
 
-            'total_opening_balance'              => $total_opening_balance ?? 0,
-            'lift_side_gran_total_balance'       => $lift_side_gran_total_balance ?? 0,
-            // 'leftSide END
-
-            // 'RightSide Start
-             'rightSideSum'                        => array_sum($rightSideSum) ?? 0,
+            // Daily/Weekly/Bi-Weekly/Monthly Collection Loans
             'daily_collection_loan'              => $CollectionLoan->daily_collection_loan ?? 0,
             'weekly_collection_loan'             => $CollectionLoan->weekly_collection_loan ?? 0,
             'bi_weekly_collection_loan'          => $CollectionLoan->bi_weekly_collection_loan ?? 0,
@@ -4490,17 +4435,13 @@ END downlinesTree**************************************************
             'electricity_bill'                   => $monthlyUpdateRow->electricity_bill ?? 0,
             'internet_mobile_recharge'           => $monthlyUpdateRow->internet_mobile_recharge ?? 0,
             'marketing_cost'                     => $monthlyUpdateRow->marketing_cost ?? 0,
-            'closing_balance_bank'               => $balances->closing_balance_bank ?? 0,
+
+            // **********************************
+            'other_general_cost'                 => $otherGeneralCost,
+            'rightSideSumTotal'                  => $rightSideSumTotal ?? 0,
+
+            'closing_balance_bank'               => $balances->closing_balance ?? 0,
             'cash_in_hand'                       => $balances->cash_in_hand ?? 0,
-            'total_cloes_balance'                => $total_cloes_balance ?? 0,
-            'other_general_cost'                 => $other_general_cost ?? 0,
-            'right_side_round'                   => $right_side_round ?? 0,
-            'right_side_gran_total_balance'      => $right_side_gran_total_balance ?? 0,
-
-            'ToNetSurplus'      => $ToNetSurplus ?? 0,
-            'ExcessIncomeOver'      => $ExcessIncomeOver ?? 0,
-
-            // 'RightSide End
 
         ];
     }

@@ -202,7 +202,7 @@ Route::middleware(['auth.userapp'])->group(function () {
         Route::get('/delete/{id}', [MemberController::class, 'businessPlanDeleteRd'])->name('business.plan.delete');
     });
 
-// DAILY UPDATE ROUTES
+   // DAILY UPDATE ROUTES
     Route::prefix('daily-update')->group(function () {
         Route::get('/add', [MemberController::class, 'dailyUpdateAdd'])->name('daily.update.add');
         Route::post('/store', [MemberController::class, 'dailyUpdateStore'])->name('daily.update.store');
@@ -212,20 +212,17 @@ Route::middleware(['auth.userapp'])->group(function () {
         Route::delete('/delete/{id}', [MemberController::class, 'dailyUpdateDelete'])->name('daily.update.delete');
     });
 
-// Monthly UPDATE ROUTES
-    Route::prefix('monthly-update')->group(function () {
-        Route::get('/add', [MemberController::class, 'monthlyUpdateAdd'])->name('monthly.update.add');
-        Route::post('/store', [MemberController::class, 'monthlyUpdateStore'])->name('monthly.update.store');
+    // Monthly UPDATE ROUTES
+        Route::prefix('monthly')->group(function () {
+            Route::get('/add', [MemberController::class, 'monthlyUpdateAdd'])->name('monthly.update.add');
+            Route::post('/store', [MemberController::class, 'monthlyUpdateStore'])->name('monthly.update.store');
 
-    });
+            // Blade view route
+            Route::get('/report', [MemberController::class, 'monthlyReport'])->name('monthly.update.report');
 
-});
-
-Route::prefix('reports')->group(function () {
-
-    Route::get('/monthly', function () {
-        return view('admin.reports.monthlyReports');
-    })->name('reports.monthlyReports');
+            // JSON API route with userId
+            Route::get('/report/api/{userId}', [MemberController::class, 'monthlyReport'])->name('monthly.update.report.api');
+        });
 
 });
 

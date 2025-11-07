@@ -166,9 +166,10 @@
         const emiAmountInput = document.querySelector('input[name="emi_amount"]');
 
         function calculateMembershipCharge() {
-            const loanAmount = parseFloat(loanAmountInput.value) || 0;
+            const loanAmount = parseFloat(numberOfDaysInput.value) || 0;
             const membershipPer = parseFloat(membershipPerInput.value) || 0;
-            const membershipCharge = (loanAmount * membershipPer) / 100;
+            const membershipCharge = (loanAmount * membershipPer) ;
+            // const membershipCharge = (loanAmount * membershipPer) / 100;
             membershipChargeInput.value = membershipCharge.toFixed(2);
         }
 

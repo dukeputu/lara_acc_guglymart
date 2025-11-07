@@ -177,6 +177,13 @@
               </ul>
           </li>
 
+             <li class="menu-item">
+              <a target="_blank" href="{{ route('monthly.update.report') }}" class="menu-link">
+                  <i class="fas fa-home"></i>
+                  <span>Monthly Report</span>
+              </a>
+          </li>
+
 
 
       </ul>

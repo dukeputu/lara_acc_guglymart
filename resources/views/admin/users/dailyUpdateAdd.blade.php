@@ -58,7 +58,7 @@
                         </select>
                     </div>
 
-                    <div class="form-group col-md-4">
+                    {{-- <div class="form-group col-md-4">
                         <label>Business Plan Category <sup>*</sup></label>
                         <select name="business_plan_id" class="form-control" required>
                             <option value="" disabled selected>Select Business Plan</option>
@@ -69,7 +69,7 @@
                                 </option>
                             @endforeach
                         </select>
-                    </div>
+                    </div> --}}
 
                     <div class="form-group col-md-4">
                         <label>Date <sup>*</sup></label>

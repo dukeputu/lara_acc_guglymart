@@ -229,6 +229,9 @@
     <!-- App Capsule -->
     <div id="appCapsule">
 
+              <center><img class="my-3" width="100" src="{{ url('userApp/assets/goldoffLogo.webp') }}" alt=""
+                style="max-width: 100px;border-radius: 15px;"></center>
+
         <div class="section mt-2 text-center">
             <h1>Log in</h1>
 
