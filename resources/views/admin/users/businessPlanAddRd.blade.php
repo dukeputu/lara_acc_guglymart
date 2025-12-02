@@ -34,31 +34,44 @@
         <div class="form-card">
 
 
-            <form method="POST"
-                action="{{ $isEdit ? route('business.plan.updateRd', $plan->id) : route('business.plan.storeRd') }}"
-                enctype="multipart/form-data">
+            <form method="POST" action="{{ route('business.plan.storeRd') }}">
                 @csrf
 
                 <div class="section-header">
-                    <div class="section-icon"><i class="fa fa-briefcase"></i></div>
                     <h3>{{ $isEdit ? 'Edit RD Business Plan' : 'Add RD Business Plan' }}</h3>
                 </div>
 
                 <div class="row">
-                    
-                  
+
+                     <div class="" style="font-size: 14px;">
+                                <strong>If RD not entry OR RD (RD Amount) Input Has Value = 0
+                                    Then Off in Daily Update All RD Inputs
+                                </strong>
+                               
+                            </div>
+
+                    <br>
+
+                    @if ($isEdit && $plan)
+                        <div class="form-group col-md-12">
+                            <div class="btn btn-primary" style="font-size: 14px;">
+                                <strong>Last Updated:</strong>
+                                {{ \Carbon\Carbon::parse($plan->updated_at)->format('d M Y h:i A') }}
+                            </div>
+                        </div>
+                    @endif
+
+
                     <div class="form-group col-md-4">
                         <label>RD Amount <sup>*</sup></label>
                         <input type="number" step="0.01" name="rd_amount" class="form-control"
-                            value="{{ $isEdit ? $plan->rd_amount : '100' }}" required>
+                            value="{{ $isEdit ? $plan->rd_amount : 100 }}" required>
                     </div>
-
-              
 
                     <div class="form-group col-md-4">
                         <label>RD Interest <sup>*</sup></label>
                         <input type="number" step="0.01" name="rd_interest" class="form-control"
-                            value="{{ $isEdit ? $plan->rd_interest : '0' }}" required>
+                            value="{{ $isEdit ? $plan->rd_interest : 0 }}" required>
                     </div>
 
                 </div>
@@ -68,9 +81,9 @@
                         <i class="fa {{ $isEdit ? 'fa-save' : 'fa-plus' }}"></i>
                         {{ $isEdit ? 'Update Plan' : 'Save Plan' }}
                     </button>
-                  
                 </div>
             </form>
+
 
         </div>
     </div>
@@ -83,71 +96,66 @@
 
 
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 
-<script>
-    @if (session('success'))
-        toastr.success("{{ session('success') }}");
-    @endif
+    <script>
+        @if (session('success'))
+            toastr.success("{{ session('success') }}");
+        @endif
 
-    @if ($errors->any())
-        toastr.error("{{ $errors->first() }}");
-    @endif
-</script>
+        @if ($errors->any())
+            toastr.error("{{ $errors->first() }}");
+        @endif
+    </script>
 
-<script>
-    setTimeout(() => {
-        document.querySelectorAll('.flash-message').forEach(el => {
-            el.style.transition = "opacity 0.5s";
-            el.style.opacity = 0;
-            setTimeout(() => el.style.display = 'none', 500);
-        });
-    }, 4000);
-</script>
+    <script>
+        setTimeout(() => {
+            document.querySelectorAll('.flash-message').forEach(el => {
+                el.style.transition = "opacity 0.5s";
+                el.style.opacity = 0;
+                setTimeout(() => el.style.display = 'none', 500);
+            });
+        }, 4000);
+    </script>
 
 
 
-<script>
-    $(document).ready(function() {
-        $('#introduceIDBtn').click(function() {
-            // $('#introducer_id').focusout(function () {
-            var id = $('#introducer_id').val();
+    <script>
+        $(document).ready(function() {
+            $('#introduceIDBtn').click(function() {
+                // $('#introducer_id').focusout(function () {
+                var id = $('#introducer_id').val();
 
-            if (id) {
-                $.get('/get-introducer/' + id, function(data) {
-                    if (data && data.name) {
-                        $('#introducer_id_hidden').val(data.introducer_id_hidden);
-                        $('#introducer_name').val(data.name);
-                        $('#introducer_phone').val(data.phone);
-                        $('#introducer_address').val(data.address);
+                if (id) {
+                    $.get('/get-introducer/' + id, function(data) {
+                        if (data && data.name) {
+                            $('#introducer_id_hidden').val(data.introducer_id_hidden);
+                            $('#introducer_name').val(data.name);
+                            $('#introducer_phone').val(data.phone);
+                            $('#introducer_address').val(data.address);
 
-                        // Set Position radio button
-                        if (data.position === 'Left') {
-                            $('#position_left').prop('checked', true);
-                        } else if (data.position === 'Right') {
-                            $('#position_right').prop('checked', true);
+                            // Set Position radio button
+                            if (data.position === 'Left') {
+                                $('#position_left').prop('checked', true);
+                            } else if (data.position === 'Right') {
+                                $('#position_right').prop('checked', true);
+                            }
+                        } else {
+                            alert('Introducer not found');
                         }
-                    } else {
-                        alert('Introducer not found');
-                    }
-                }).fail(function() {
-                    alert('Something went wrong');
-                });
-            } else {
-                // alert('Please enter Introducer ID');
-            }
+                    }).fail(function() {
+                        alert('Something went wrong');
+                    });
+                } else {
+                    // alert('Please enter Introducer ID');
+                }
+            });
         });
-    });
-</script>
+    </script>
 
 
 
 
 
 @endsection
-
-
-
-
-

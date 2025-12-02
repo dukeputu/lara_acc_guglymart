@@ -33,10 +33,14 @@
         <!-- Form Card -->
         <div class="form-card">
 
-         
 
-            <form method="POST" action="{{ route('registerUserApp.userApp') }}" enctype="multipart/form-data">
+
+            <form method="POST" action="{{ $isEdit ? route('company.update.update', $update->id) : route('user.company.store') }}" enctype="multipart/form-data">
                 @csrf
+              
+                @if ($isEdit)
+                    @method('PUT')
+                @endif
 
                 <!-- User Information Section -->
                 <div class="section-header">
@@ -46,91 +50,151 @@
 
                 <div class="row">
                     <div class="form-group col-md-4">
-                        <label>Name <sup>*</sup></label>
-                        <input type="text" name="user_name" class="form-control" value="{{ old('user_name') }}" required>
+                        <label>Company Name <sup>*</sup></label>
+                        <input type="text" name="CompanyName" class="form-control"
+                            value="{{ $isEdit ? $update->app_u_name : old('CompanyName') }}" required>
                     </div>
 
                     <div class="form-group col-md-4">
-                        <label>Phone Number <sup>*</sup></label>
-                        <input min="0" type="number" name="phone_number" class="form-control" value="{{ old('phone_number') }}"
-                            required>
+                        <label>Company CIN No <sup>*</sup></label>
+                        <input  type="text" name="CompanyCIN" class="form-control"
+                            value="{{ $isEdit ? $update->cin_no : old('CompanyCIN') }}" required>
                     </div>
 
                     <div class="form-group col-md-4">
-                        <label>PAN Number <sup>*</sup></label>
-                        <input type="text" name="pan_number" class="form-control" value="{{ old('pan_number') }}" >
+                        <label>PAN Number</label>
+                        <input type="text" name="pan_number" class="form-control"
+                            value="{{ $isEdit ? $update->pan_number : old('pan_number') }}">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label>Mobile Number</label>
+                        <input type="text" name="MobailNumber" class="form-control"
+                            value="{{ $isEdit ? $update->phone_number : old('MobailNumber') }}">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label>Email</label>
+                        <input type="text" name="user_email" class="form-control"
+                            value="{{ $isEdit ? $update->user_email : old('user_email') }}">
                     </div>
 
                     <div class="form-group col-md-4">
                         <label>Address</label>
-                        <input type="text" name="user_address" class="form-control" value="{{ old('user_address') }}">
+                        <input type="text" name="user_address" class="form-control"
+                            value="{{ $isEdit ? $update->app_u_address : old('user_address') }}">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label>Police Station</label>
+                        <input type="text" name="PoliceStation" class="form-control"
+                            value="{{ $isEdit ? $update->police_station : old('PoliceStation') }}">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label>District</label>
+                        <input type="text" name="user_district" class="form-control"
+                            value="{{ $isEdit ? $update->user_district : old('user_district') }}">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label>State Name</label>
+                        <input type="text" name="user_state" class="form-control"
+                            value="{{ $isEdit ? $update->user_state : old('user_state') }}">
                     </div>
 
                     <div class="form-group col-md-4">
                         <label>Pin Code</label>
-                        <input type="text" name="pin_code" class="form-control" value="{{ old('pin_code') }}">
+                        <input type="text" name="pin_code" class="form-control"
+                            value="{{ $isEdit ? $update->pin_code : old('pin_code') }}">
                     </div>
 
                     <div class="form-group col-md-4">
-                        <label>CIN No</label>
-                        <input type="text" name="cin_no" class="form-control" value="{{ old('cin_no') }}">
+                        <label>Contact Person Name</label>
+                        <input type="text" name="contact_person_no" class="form-control"
+                            value="{{ $isEdit ? $update->contact_person_no : old('contact_person_no') }}">
                     </div>
 
                     <div class="form-group col-md-4">
-                        <label>Contact Person No</label>
-                        <input type="text" name="contact_person_no" class="form-control" value="{{ old('contact_person') }}">
-                    </div>
-                      <div class="form-group col-md-4">
                         <label>Profile Picture</label>
                         <input type="file" name="profile_picture" class="form-control">
+                        @if ($isEdit && $update->user_pic_img)
+                            <div class="mt-2">
+                                <img src="{{ asset('storage/' . $update->user_pic_img) }}" alt="Profile Picture"
+                                    width="100">
+                            </div>
+                        @endif
                     </div>
 
-                  
                 </div>
 
                 <!-- Bank Information Section -->
                 <div class="section-header">
                     <div class="section-icon"><i class="fa fa-bank"></i></div>
-                    <h3>Bank Information</h3>
+                    <h3>1st Bank Information</h3>
                 </div>
 
                 <div class="row">
                     <div class="form-group col-md-4">
                         <label>Bank Name</label>
-                        <input type="text" name="bank_name" class="form-control" value="{{ old('bank_name') }}">
+                        <input type="text" name="bank_name" class="form-control"
+                            value="{{ $isEdit ? $update->bank_name : old('bank_name') }}">
                     </div>
 
                     <div class="form-group col-md-4">
                         <label>Bank Account No.</label>
                         <input min="0" type="number" name="bank_account_no" class="form-control"
-                            value="{{ old('bank_account_no') }}">
+                            value="{{ $isEdit ? $update->bank_account_no : old('bank_account_no') }}">
                     </div>
 
                     <div class="form-group col-md-4">
                         <label>IFSC Code</label>
-                        <input type="text" name="ifsc_code" class="form-control" value="{{ old('ifsc_code') }}">
+                        <input type="text" name="ifsc_code" class="form-control"
+                            value="{{ $isEdit ? $update->ifsc_code : old('ifsc_code') }}">
                     </div>
 
                     <div class="form-group col-md-4">
                         <label>UPI ID</label>
-                        <input type="text" name="upi_id" class="form-control" value="{{ old('upi_id') }}">
+                        <input type="text" name="upi_id" class="form-control"
+                            value="{{ $isEdit ? $update->upi_id : old('upi_id') }}">
+                    </div>
+                </div>
+
+                <!-- 2nd Bank Information Section (If Needed) -->
+                <div class="section-header">
+                    <div class="section-icon"><i class="fa fa-bank"></i></div>
+                    <h3>2nd Bank Information (If Needed)</h3>
+                </div>
+
+                <div class="row">
+                    <div class="form-group col-md-4">
+                        <label>Bank Name</label>
+                        <input type="text" name="second_bank_name" class="form-control"
+                            value="{{ $isEdit ? $update->second_bank_name : old('second_bank_name') }}">
                     </div>
 
-                  
+                    <div class="form-group col-md-4">
+                        <label>Bank Account No.</label>
+                        <input min="0" type="number" name="second_bank_account_no" class="form-control"
+                            value="{{ $isEdit ? $update->second_bank_account_no : old('second_bank_account_no') }}">
+                    </div>
 
                     <div class="form-group col-md-4">
-                        <label>UPI QR Code</label>
-                        <input type="file" name="upi_qr_code" class="form-control">
+                        <label>IFSC Code</label>
+                        <input type="text" name="second_ifsc_code" class="form-control"
+                            value="{{ $isEdit ? $update->second_ifsc_code : old('second_ifsc_code') }}">
+                    </div>
+
+                    <div class="form-group col-md-4">
+                        <label>UPI ID</label>
+                        <input type="text" name="second_upi_id" class="form-control"
+                            value="{{ $isEdit ? $update->second_upi_id : old('second_upi_id') }}">
                     </div>
                 </div>
 
                 <!-- Submit Section -->
                 <div class="submit-section mt-4">
                     <button type="submit" class="btn btn-primary">
-                        <i class="fa fa-user-plus"></i> Register User
+                        <i class="fa fa-user-plus"></i> {{ $isEdit ? 'Update User' : 'Register User' }}
                     </button>
                 </div>
             </form>
+
 
 
 

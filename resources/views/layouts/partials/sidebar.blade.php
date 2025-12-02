@@ -109,20 +109,20 @@
     </li>
 
     <!-- Add Company -->
-    <li class="menu-item {{ request()->routeIs('addCompany.*') || request()->routeIs('appUsers.listAdminPanel') ? 'active open' : '' }}">
+    <li class="menu-item {{ request()->routeIs('user.*') || request()->routeIs('appUsers.listAdminPanel') ? 'active open' : '' }}">
         <a href="javascript:void(0)" class="menu-link" onclick="toggleSubmenu(this)">
             <i class="fas fa-users"></i>
             <span>Add Company</span>
             <i class="fas fa-chevron-right menu-arrow"></i>
         </a>
-        <ul class="submenu" style="{{ request()->routeIs('addCompany.*') || request()->routeIs('appUsers.listAdminPanel') ? 'display:block;' : '' }}">
+        <ul class="submenu" style="{{ request()->routeIs('user.*') || request()->routeIs('appUsers.listAdminPanel') ? 'display:block;' : '' }}">
             <li>
-                <a href="{{ route('addCompany.User') }}" class="submenu-link {{ request()->routeIs('addCompany.User') ? 'active' : '' }}">
+                <a href="{{ route('user.company.add') }}" class="submenu-link {{ request()->routeIs('user.company.add') ? 'active' : '' }}">
                     <i class="fas fa-circle"></i> Add Company
                 </a>
             </li>
             <li>
-                <a href="{{ route('appUsers.listAdminPanel') }}" class="submenu-link {{ request()->routeIs('appUsers.listAdminPanel') ? 'active' : '' }}">
+                <a href="{{ route('user.company.view') }}" class="submenu-link {{ request()->routeIs('user.company.view') ? 'active' : '' }}">
                     <i class="fas fa-circle"></i> View Company
                 </a>
             </li>

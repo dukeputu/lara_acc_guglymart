@@ -34,7 +34,7 @@
         <div class="form-card">
 
             <form method="POST"
-                action="{{ $isEdit ? route('daily.update.update', $update->id) : route('monthly.update.store') }}">
+                action="{{ $isEdit ? route('monthly.update.update', $update->id) : route('monthly.update.store') }}">
                 @csrf
                 @if ($isEdit)
                     @method('PUT')
@@ -46,89 +46,146 @@
                 </div>
 
                 <div class="row">
-                    <div class="form-group col-md-4">
+                    {{-- <div class="form-group col-md-4">
                         <label>Month <sup>*</sup></label>
                         <select name="month_name" class="form-control" required>
                             <option value="" disabled selected>Select Month</option>
                             @foreach (['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as $m)
                                 <option value="{{ $m }}"
-                                    {{ $isEdit && $update->month_name == $m ? 'selected' : '0' }}>{{ $m }}
+                                    {{ ($isEdit && $update->month_name == $m) || (!$isEdit && date('F') == $m) ? 'selected' : '' }}>
+                                    {{ $m }}
                                 </option>
                             @endforeach
                         </select>
                     </div>
+ --}}
+                    @if (!$isEdit)
+                        <div class="form-group col-md-4">
+                            <label>Month <sup>*</sup></label>
+                            @php
+                                $year = now()->year;
+
+                                // Fetch months already used for this user
+                                $userId = session('app_user_id'); // or use auth()->id()
+                                $usedMonths = \DB::table('monthly_update')
+                                    ->where('user_by', $userId)
+                                    ->pluck('month_name')
+                                    ->toArray();
+
+                                // Determine selected value: edit month if exists, otherwise current month
+                                $current =
+                                    $isEdit && !empty(data_get($update, 'month'))
+                                        ? substr(data_get($update, 'month'), 0, 7)
+                                        : now()->format('Y-m');
+
+                                // Generate month options (Jan → Dec)
+                                $monthOptions = [];
+                                foreach (range(1, 12) as $m) {
+                                    $value = sprintf('%d-%02d', $year, $m);
+
+                                    // Skip month if already used
+                                    if (in_array($value, $usedMonths)) {
+                                        continue;
+                                    }
+
+                                    $monthOptions[] = [
+                                        'value' => $value,
+                                        'text' => date('F', mktime(0, 0, 0, $m, 1)),
+                                        'selected' => $current === $value,
+                                    ];
+                                }
+                            @endphp
+
+                            <select name="month_name" class="form-control" required>
+                                <option disabled selected>Select Month</option>
+                                @foreach ($monthOptions as $option)
+                                    <option value="{{ $option['value'] }}" {{ $option['selected'] ? 'selected' : '' }}>
+                                        {{ $option['text'] }}
+                                    </option>
+                                @endforeach
+                            </select>
+
+
+                        </div>
+
+                    @endif
+
+
+
+
 
                     <div class="form-group col-md-4">
                         <label>Total Director Loan</label>
-                        <input type="number" step="0.01" name="director_loan" class="form-control"
+                        <input required type="number" step="0.01" name="director_loan" class="form-control"
                             value="{{ $isEdit ? $update->director_loan : '0' }}">
                     </div>
 
                     <div class="form-group col-md-4">
                         <label>Total Bank Loan</label>
-                        <input type="number" step="0.01" name="bank_loan" class="form-control"
+                        <input required type="number" step="0.01" name="bank_loan" class="form-control"
                             value="{{ $isEdit ? $update->bank_loan : '0' }}">
                     </div>
 
                     <div class="form-group col-md-4">
                         <label>Total Investment for Invertor</label>
-                        <input type="number" step="0.01" name="investment_for_invertor" class="form-control"
+                        <input required readonly type="number" step="0.01" name="investment_for_invertor" class="form-control"
                             value="{{ $isEdit ? $update->investment_for_invertor : '0' }}">
                     </div>
 
-                       <div class="form-group col-md-4">
+                    <div class="form-group col-md-4">
                         <label>Director Salary</label>
-                        <input type="number" step="0.01" name="director_salary" class="form-control"
+                        <input required type="number" step="0.01" name="director_salary" class="form-control"
                             value="{{ $isEdit ? $update->director_salary : '0' }}">
                     </div>
 
                     <div class="form-group col-md-4">
                         <label>Total Staff Salary</label>
-                        <input type="number" step="0.01" name="staff_salary" class="form-control"
+                        <input required type="number" step="0.01" name="staff_salary" class="form-control"
                             value="{{ $isEdit ? $update->staff_salary : '0' }}">
                     </div>
 
                     <div class="form-group col-md-4">
                         <label>Office Rent</label>
-                        <input type="number" step="0.01" name="office_rent" class="form-control"
+                        <input required type="number" step="0.01" name="office_rent" class="form-control"
                             value="{{ $isEdit ? $update->office_rent : '0' }}">
                     </div>
 
                     <div class="form-group col-md-4">
                         <label>Electricity Bill</label>
-                        <input type="number" step="0.01" name="electricity_bill" class="form-control"
+                        <input required type="number" step="0.01" name="electricity_bill" class="form-control"
                             value="{{ $isEdit ? $update->electricity_bill : '0' }}">
                     </div>
 
                     <div class="form-group col-md-4">
                         <label>Internet / Mobile Recharge Bill</label>
-                        <input type="number" step="0.01" name="recharge_bill" class="form-control"
+                        <input required type="number" step="0.01" name="recharge_bill" class="form-control"
                             value="{{ $isEdit ? $update->recharge_bill : '0' }}">
                     </div>
 
                     <div class="form-group col-md-4">
                         <label>Purchase Furniture Amount</label>
-                        <input type="number" step="0.01" name="furniture_amount" class="form-control"
+                        <input required type="number" step="0.01" name="furniture_amount" class="form-control"
                             value="{{ $isEdit ? $update->furniture_amount : '0' }}">
                     </div>
 
                     <div class="form-group col-md-4">
                         <label>Other Expences</label>
-                        <input type="number" step="0.01" name="other_expences" class="form-control"
+                        <input required type="number" step="0.01" name="other_expences" class="form-control"
                             value="{{ $isEdit ? $update->other_expences : '0' }}">
                     </div>
 
 
                 </div>
 
-              
+
 
                 <div class="submit-section">
                     <button type="submit" class="btn btn-primary">
                         <i class="fa {{ $isEdit ? 'fa-save' : 'fa-plus' }}"></i>
                         {{ $isEdit ? 'Update' : 'Save' }}
                     </button>
-                    <a href="{{ route('daily.update.view') }}" class="btn btn-secondary">Back to List</a>
+
+                    {{-- <a href="{{ route('daily.update.view') }}" class="btn btn-secondary">Back to List</a> --}}
                 </div>
             </form>
 

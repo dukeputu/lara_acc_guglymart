@@ -1,17 +1,18 @@
   @php
-    $userId = session('app_user_id');
-    // $userName = session('app_user_name');
-    // $userPhone = session('app_user_phone');
-    // $userPic = session('app_user_photo');
-    // $userWallet = session('app_user_wallet');
-    $userName = DB::table('app_users')->where('id', $userId)->value('app_u_name');
-    // $currentuser_wallet = DB::table('app_users')->where('id', $userId)->value('user_wallet');
-    // $totalWithdrawalReq = DB::table('app_users')->where('id', $userId)->value('total_withdrawal_req');
-    // $life_time_eran = DB::table('app_users')->where('id', $userId)->value('life_time_eran');
+      $userId = session('app_user_id');
+      $adminSession = session('member_id');
+      //   dd($adminSession);
+      // $userName = session('app_user_name');
+      // $userPhone = session('app_user_phone');
+      // $userPic = session('app_user_photo');
+      // $userWallet = session('app_user_wallet');
+      $userName = DB::table('app_users')->where('id', $userId)->value('app_u_name');
+      // $currentuser_wallet = DB::table('app_users')->where('id', $userId)->value('user_wallet');
+      // $totalWithdrawalReq = DB::table('app_users')->where('id', $userId)->value('total_withdrawal_req');
+      // $life_time_eran = DB::table('app_users')->where('id', $userId)->value('life_time_eran');
 
-
-    //   $renewCount = \DB::table('user_balance_request')->where('status', 2)->count();
-    //   $withdrawalCount = \DB::table('user_withdraw_request')->where('status', 2)->count();
+      //   $renewCount = \DB::table('user_balance_request')->where('status', 2)->count();
+      //   $withdrawalCount = \DB::table('user_withdraw_request')->where('status', 2)->count();
   @endphp
   <style>
       .submenu-link i {
@@ -42,7 +43,7 @@
 
       <!-- Action Buttons -->
       <div class="sidebar-actions">
-         
+
           <a href="{{ route('user.Logout') }}" class="sidebar-btn logout">
               <i class="fas fa-sign-out-alt"></i>
               Logout
@@ -83,7 +84,7 @@
 
       <!-- Menu -->
       <ul class="sidebar-menu" id="sidebarMenu">
-          <li class="menu-header">MAIN NAVIGATION USERS {{$userName}}</li>
+          <li class="menu-header">MAIN NAVIGATION USERS {{ $userName }}</li>
 
           <!-- Search Box -->
           <li class="menu-search p-2">
@@ -98,37 +99,42 @@
               </a>
           </li>
 
-          <!-- Business Plan -->
-          <li class="menu-item {{ request()->routeIs('business.plan.*') ? 'active open' : '' }}">
-              <a href="javascript:void(0)" class="menu-link" onclick="toggleSubmenu(this)">
-                  <i class="fas fa-briefcase"></i>
-                  <span>Business Plan</span>
-                  <i class="fas fa-chevron-right menu-arrow"></i>
-              </a>
-              <ul class="submenu" style="{{ request()->routeIs('business.plan.*') ? 'display:block;' : '' }}">
-                  <li>
-                      <a href="{{ route('business.plan.add') }}"
-                          class="submenu-link {{ request()->routeIs('business.plan.add') ? 'active' : '' }}">
-                          <i class="fas fa-circle"></i> Add
-                      </a>
-                  </li>
 
-                
-                  <li>
-                      <a href="{{ route('business.plan.view') }}"
-                          class="submenu-link {{ request()->routeIs('business.plan.view') ? 'active' : '' }}">
-                          <i class="fas fa-circle"></i> View
-                      </a>
-                  </li>
+          @if ($adminSession)
+              <!-- Business Plan -->
+              <li class="menu-item {{ request()->routeIs('business.plan.*') ? 'active open' : '' }}">
+                  <a href="javascript:void(0)" class="menu-link" onclick="toggleSubmenu(this)">
+                      <i class="fas fa-briefcase"></i>
+                      <span>Business Plan</span>
+                      <i class="fas fa-chevron-right menu-arrow"></i>
+                  </a>
+                  <ul class="submenu" style="{{ request()->routeIs('business.plan.*') ? 'display:block;' : '' }}">
+                      <li>
+                          <a href="{{ route('business.plan.add') }}"
+                              class="submenu-link {{ request()->routeIs('business.plan.add') ? 'active' : '' }}">
+                              <i class="fas fa-circle"></i> Add
+                          </a>
+                      </li>
 
-                    <li>
-                      <a href="{{ route('business.plan.addRd') }}"
-                          class="submenu-link {{ request()->routeIs('business.plan.addRd') ? 'active' : '' }}">
-                          <i class="fas fa-circle"></i> RD
-                      </a>
-                  </li>
-              </ul>
-          </li>
+
+                      <li>
+                          <a href="{{ route('business.plan.view') }}"
+                              class="submenu-link {{ request()->routeIs('business.plan.view') ? 'active' : '' }}">
+                              <i class="fas fa-circle"></i> View
+                          </a>
+                      </li>
+
+                      <li>
+                          <a href="{{ route('business.plan.addRd') }}"
+                              class="submenu-link {{ request()->routeIs('business.plan.addRd') ? 'active' : '' }}">
+                              <i class="fas fa-circle"></i> RD
+                          </a>
+                      </li>
+                  </ul>
+              </li>
+          @endif
+
+
 
           <!-- Daily Update -->
           <li class="menu-item {{ request()->routeIs('daily.update.*') ? 'active open' : '' }}">
@@ -168,21 +174,28 @@
                           <i class="fas fa-circle"></i> Add
                       </a>
                   </li>
-                  {{-- <li>
-                      <a href="{{ route('daily.update.view') }}"
-                          class="submenu-link {{ request()->routeIs('daily.update.view') ? 'active' : '' }}">
+                 <li>
+                      <a href="{{ route('monthly.update.view') }}"
+                          class="submenu-link {{ request()->routeIs('monthly.update.view') ? 'active' : '' }}">
                           <i class="fas fa-circle"></i> View
                       </a>
-                  </li> --}}
+                  </li>
+
+                 <li>
+                      <a href="{{ route('monthly.update.month') }}"
+                          class="submenu-link {{ request()->routeIs('monthly.update.month') ? 'active' : '' }}">
+                          <i class="fas fa-circle"></i> Report
+                      </a>
+                  </li>
               </ul>
           </li>
 
-             <li class="menu-item">
+          {{-- <li class="menu-item">
               <a target="_blank" href="{{ route('monthly.update.report') }}" class="menu-link">
                   <i class="fas fa-home"></i>
                   <span>Monthly Report</span>
               </a>
-          </li>
+          </li> --}}
 
 
 

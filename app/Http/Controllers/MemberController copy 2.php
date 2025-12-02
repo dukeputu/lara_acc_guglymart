@@ -6,9 +6,9 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Str;
+ use Barryvdh\DomPDF\Facade\Pdf;
+ use Spatie\Browsershot\Browsershot;
 
 class MemberController extends Controller
 {
@@ -184,135 +184,6 @@ class MemberController extends Controller
 
     }
 
-// ******************************** APP Banner
-
-    public function appBannerView()
-    {
-        // Fetch all packages from the database
-        $packages = \DB::table('app_banners')->get();
-        // Pass the packages data to the view
-
-        return view('admin.logicApp.appBannerMaster', compact('packages'));
-    }
-
-    public function appBannerPost(Request $request)
-    {
-        // File upload helper public\userApp\assets\pg-banner
-        $uploadFile = function ($request, $inputName, $folder, $prefix = '') {
-            if ($request->hasFile($inputName)) {
-                $file     = $request->file($inputName);
-                $filename = 'bg' . $prefix . '_' . date('Ymd_His') . '.' . $file->getClientOriginalExtension();
-                $file->move(public_path($folder), $filename);
-                return "$folder/$filename";
-            }
-            return null;
-        };
-
-        $packagePhoto = $uploadFile($request, 'packagePhoto', 'userApp/assets/pg-banner', 'pk_img');
-
-        // Insert data into package_master table
-        DB::table('app_banners')->insert([
-            'banner_url' => $packagePhoto,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        return back()->with('success', 'Package created successfully!');
-    }
-
-// ********************************
-
-    public function packageMasterGet()
-    {
-        // Fetch all packages from the database
-        $packages = \DB::table('package_master')->get();
-        // Pass the packages data to the view
-        return view('admin.logicApp.packageMaster', compact('packages'));
-    }
-
-    public function packageMasterStore(Request $request)
-    {
-        // Validate incoming request
-        $request->validate([
-            'package_name'          => 'required|string|max:255',
-            'package_amount'        => 'required|numeric',
-            'package_payout_per'    => 'required|numeric',
-            'package_total_amount'  => 'required|numeric',
-            'package_time_duration' => 'required|numeric',
-        ]);
-
-        // File upload helper public\userApp\assets\pg-banner
-        $uploadFile = function ($request, $inputName, $folder, $prefix = '') {
-            if ($request->hasFile($inputName)) {
-                $file     = $request->file($inputName);
-                $filename = 'bg' . $prefix . '_' . date('Ymd_His') . '.' . $file->getClientOriginalExtension();
-                $file->move(public_path($folder), $filename);
-                return "$folder/$filename";
-            }
-            return null;
-        };
-
-        $packagePhoto = $uploadFile($request, 'packagePhoto', 'userApp/assets/pg-banner', 'pk_img');
-
-        // Insert data into package_master table
-        DB::table('package_master')->insert([
-            'package_name'          => $request->package_name,
-            'package_amount'        => $request->package_amount,
-            'package_payout_per'    => $request->package_payout_per,
-            'package_total_amount'  => $request->package_total_amount,
-            'package_time_duration' => $request->package_time_duration,
-            'package_img'           => $packagePhoto,
-            'created_at'            => now(),
-            'updated_at'            => now(),
-        ]);
-
-        // return redirect()->route('packageMaster.list')->with('success', 'Package created successfully!');
-        return back()->with('success', 'Package created successfully!');
-    }
-
-    public function packageMasterUpdate(Request $request, $id)
-    {
-
-        $package = DB::table('package_master')->where('id', $id)->first();
-        if (! $package) {
-            return back()->with('error', 'Package not found!');
-        }
-
-        $uploadFile = function ($request, $inputName, $folder, $prefix = '') {
-            if ($request->hasFile($inputName)) {
-                $file     = $request->file($inputName);
-                $filename = 'bg' . $prefix . '_' . date('Ymd_His') . '.' . $file->getClientOriginalExtension();
-                $file->move(public_path($folder), $filename);
-                return "$folder/$filename";
-            }
-            return null;
-        };
-
-        $packagePhoto = $uploadFile($request, 'packagePhoto', 'userApp/assets/pg-banner', 'pk_img');
-
-        DB::table('package_master')
-            ->where('id', $id)
-            ->update([
-                'package_name'          => $request->package_name,
-                'package_amount'        => $request->package_amount,
-                'package_payout_per'    => $request->package_payout_per,
-                'package_total_amount'  => $request->package_total_amount,
-                'package_time_duration' => $request->package_time_duration,
-                'package_img'           => $packagePhoto ?? $package->package_img,
-                'updated_at'            => now(),
-            ]);
-
-        return redirect()->route('packageMaster.list', $id)->with('success', 'Package updated successfully!');
-    }
-
-    public function packageMasterEdit($id)
-    {
-        $editPackage = DB::table('package_master')->where('id', $id)->first();
-        $packages    = DB::table('package_master')->orderBy('id', 'desc')->get();
-
-        return view('admin.logicApp.packageMaster', compact('packages', 'editPackage'));
-    }
-
 // **************************************************
 
     public function allMembersList()
@@ -322,3514 +193,20 @@ class MemberController extends Controller
 
 // ****************************************
 
-// ***********************************
-
-    public function showPlanPage($slug)
-    {
-        // Get plan details
-        $plan = DB::table('plan_master')
-            ->whereRaw('LOWER(select_plan) = ?', [strtolower($slug)])
-            ->first();
-
-        if (! $plan) {
-            abort(404, 'Plan not found');
-        }
-
-        // Get current logged-in member ID from session
-        $beneficiaryId = session('member_id');
-
-        // Get income transactions for the member under the plan
-        $transactions = DB::table('mlm_transactions as t')
-            ->join('members as m', 't.member_id', '=', 'm.member_id')
-            ->select(
-                't.member_id',
-                'm.name as downline_name',
-                't.level',
-                't.amount',
-                't.plan_id'
-            )
-            ->where('t.beneficiary_id', $beneficiaryId)
-            ->where('t.plan_id', $plan->select_plan_id)
-            ->get();
-
-        // Total income
-        $totalIncome = $transactions->sum('amount');
-
-        return view('admin.allViewTables.plans_view_menu', [
-            'plan'         => $plan,
-            'transactions' => $transactions,
-            'totalIncome'  => $totalIncome,
-        ]);
-    }
-
-// *************************************
-
-// *************************************************
-
-// User App All Cntoler Start *************************
-
-    /*   public function registerUserApp(Request $request)
-    {
-        // Validate input
-        $request->validate([
-            'user_name'       => 'required|string|max:255',
-            'phone_number'    => 'required|string|max:20|unique:app_users,phone_number',
-            'address'         => 'nullable|string',
-            'profile_picture' => 'nullable|file|mimes:jpeg,png,jpg|max:20048',
-        ]);
-
-        // Step 1: Default introducer = Company
-        $companyIntroducer = DB::table('app_users')->where('phone_number', '0001112223')->first();
-
-        $introducer = DB::table('app_users')
-            ->where('phone_number', $request->introducer_number)
-            ->first();
-
-        // Step 2: Check introducer child count
-        if ($introducer) {
-            $childCount = DB::table('app_users')
-                ->where('introducer_id', $introducer->id)
-                ->count();
-
-            // If childCount >= 10, then the company will be the introducer.
-            if ($childCount >= 10) {
-                $introducer = $companyIntroducer;
-            }
-        } else {
-            // If introducer is not available, company will be the introducer
-            $introducer = $companyIntroducer;
-        }
-
-        // File upload helper
-        $uploadFile = function ($request, $inputName, $folder, $prefix = '') {
-            if ($request->hasFile($inputName)) {
-                $file     = $request->file($inputName);
-                $filename = $request->phone_number . '_' . $prefix . '_' . $file->getClientOriginalName();
-                $file->move(public_path("uploads/$folder"), $filename);
-                return "uploads/$folder/" . $filename;
-            }
-            return null;
-        };
-
-        $profilePicPath = $uploadFile($request, 'profile_picture', 'qr_user', 'profile');
-        $qrCodePath     = $uploadFile($request, 'upi_qr_code', 'qr_user', 'qr');
-
-        // Insert into DB
-        DB::table('app_users')->insert([
-            'app_u_name'       => $request->user_name,
-            'phone_number'     => $request->phone_number,
-            'user_wallet'      => 0,
-            'introducer_id'    => $introducer->id ?? $companyIntroducer->id,
-            'introducer_phone' => $introducer->phone_number ?? $companyIntroducer->phone_number,
-            'introducer_name'  => $introducer->app_u_name ?? $companyIntroducer->app_u_name,
-            'user_email'       => $request->user_email,
-            'password'         => Hash::make('0011'),
-            'app_u_address'    => $request->user_address,
-            'pin_code'         => $request->pin_code,
-            'bank_name'        => $request->bank_name,
-            'ifsc_code'        => $request->ifsc_code,
-            'bank_account_no'  => $request->bank_account_no,
-            'upi_id'           => $request->upi_id,
-            'upi_qr_code'      => $profilePicPath,
-            'user_pic_img'     => $qrCodePath,
-            'status'           => 1,
-            'created_at'       => now(),
-            'updated_at'       => now(),
-        ]);
-
-        return redirect()->route('userLogin.app')->with('success', '<h3 style="color:#fff;"> Registered Successfully.<br> Login User Name = ' . $request->phone_number . '<br>Login Password Is = 0011</h3>');
-    } */
-
-    public function registerUserApp(Request $request)
-    {
-        // Validate input
-        $request->validate([
-            'user_name'    => 'required|string|max:255',
-            'phone_number' => 'required|string|max:20|unique:app_users,phone_number',
-        ]);
-
-        // File upload helper
-        $uploadFile = function ($request, $inputName, $folder, $prefix = '') {
-            if ($request->hasFile($inputName)) {
-                $file     = $request->file($inputName);
-                $filename = $request->phone_number . '_' . $prefix . '_' . $file->getClientOriginalName();
-                $file->move(public_path("uploads/$folder"), $filename);
-                return "uploads/$folder/" . $filename;
-            }
-            return null;
-        };
-
-        $profilePicPath = $uploadFile($request, 'profile_picture', 'qr_user', 'profile');
-        $qrCodePath     = $uploadFile($request, 'upi_qr_code', 'qr_user', 'qr');
-
-        // Insert into DB
-        DB::table('app_users')->insert([
-            'app_u_name'        => $request->user_name,
-            'phone_number'      => $request->phone_number,
-            'pan_number'        => $request->pan_number,
-            'cin_no'            => $request->cin_no,
-            'contact_person_no' => $request->contact_person_no,
-            'password'          => Hash::make('0011'),
-            'app_u_address'     => $request->user_address,
-            'pin_code'          => $request->pin_code,
-            'bank_name'         => $request->bank_name,
-            'ifsc_code'         => $request->ifsc_code,
-            'bank_account_no'   => $request->bank_account_no,
-            'upi_id'            => $request->upi_id,
-            'upi_qr_code'       => $profilePicPath,
-            'user_pic_img'      => $qrCodePath,
-            'status'            => 1,
-            'created_at'        => now(),
-            'updated_at'        => now(),
-        ]);
-
-        return redirect()->route('addCompany.User')->with('success', '<h3 style="color:#fff;"> Registered Successfully.<br> Login User Name = ' . $request->phone_number . '<br>Login Password Is = 0011</h3>');
-    }
-
-    public function appUsersAdminPanelList(Request $request)
-    {
-
-        $query = \DB::table('app_users')->where('id', '!=', 1);
-
-        if ($request->has('phone') && ! empty($request->phone)) {
-            $query->where('phone_number', $request->phone);
-        }
-
-        $appUsers = $query->orderBy('id', 'desc')->get();
-
-        return view('admin.logicApp.appUsers', compact('appUsers'));
-
-    }
-
-//appUsersAdminPanelList=> This is view of admin panle  for 1.app-users-list-admin-panel 2. add-balance-request-list 3. withdrawal-request-list
-
-// userAppDashboard => this funcation work is for when user add Bal to see the company Bank Detels
-    public function userAppDashboard()
-    {
-        $actived = 1;
-
-        $membersBankDetails = DB::table('members')
-            ->where('status', $actived)
-            ->orderBy('id', 'asc')
-            ->get();
-        // Default message
-        $warningMessage = null;
-        // Check if there are more than 1 active members
-        if ($membersBankDetails->count() > 1) {
-            $warningMessage = "More than 1 company is active. Please contact the company.";
-        }
-
-        if (request()->routeIs('addBalance.userApp')) {
-            return view('userApp.userAppView.addBalance', compact('membersBankDetails', 'warningMessage'));
-        }
-
-        // return view('userApp.userAppView.dashboard', compact('appPackages'));
-
-    }
-// userAppDashboard => this funcation work is for when user add Bal to see the company Bank Detels
-
-// userAddBalance => this funcation work is for when user add Bal and Scershoot REQ
-    public function userAddBalance(Request $request)
-    {
-        $request->validate([
-            'add_balance_amount' => 'string|max:10',
-            'add_pin_bal'        => 'required|integer|min:1',
-            // 'payment_screenShot' => 'nullable|file|mimes:jpeg,png,jpg|max:20048',
-            'userId'             => 'required|integer',
-            'userName'           => 'required|string',
-            'userPhone'          => 'required|string',
-        ]);
-
-        // dd($request->cash_or_wallat);
-
-        $uploadFile = function ($request, $inputName, $folder) {
-            if ($request->hasFile($inputName)) {
-                $file     = $request->file($inputName);
-                $filename = Str::slug($request->userPhone) . '_' . now()->format('YmdHis') . '_' . Str::random(5) . '.' . $file->getClientOriginalExtension();
-                $file->move(public_path("uploads/$folder"), $filename);
-                return "uploads/$folder/" . $filename;
-            }
-            return null;
-        };
-        // Step 1: Get the balance request by ID
-        // $balanceRequest = DB::table('user_balance_request')->where('id', $id)->first();
-
-        // $cashOrWallat = $request->cash_or_wallat ?? null;
-        $cashOrWallat = ($request->cash_or_wallat && $request->cash_or_wallat != 1) ? $request->cash_or_wallat : null;
-
-        $rowStatus  = $cashOrWallat ? 1 : 2;              // If value exists, status = 1; else = 2
-        $rowStatusT = $cashOrWallat ? 'Done' : 'Pending'; // If value exists, status = 1; else = 2
-
-        // Step 6: Generate unique PINs
-        $pinList       = [];
-        $generatedPins = [];
-
-        for ($i = 0; $i < $request->add_pin_bal; $i++) {
-            // Generate a unique PIN string composed of:
-            // - 6 random uppercase alphanumeric characters (using Laravel's Str::random)
-            // - Current loop index (i + 1) to ensure uniqueness even within the same request
-            // - User ID who requested the pin generation ($request->userId)
-            // - Related balance request ID ($balanceRequestId) for this only 'w'
-            // - Total number of pins being added in this request ($request->add_pin_bal)
-            // Example format: "A1B2C3" + "1" + "101" + "7" + "20" => A1B2C31101720
-            // $randomPin = strtoupper(Str::random(6)) . ($i + 1) . $request->userId . $balanceRequestId . $request->add_pin_bal;
-
-            // Generate until a unique pin is found
-            do {
-                $randomPin = strtoupper(Str::random(6)) . ($i + 1) . $request->userId . 'w' . (int) $request->add_pin_bal;
-            } while (in_array($randomPin, $generatedPins));
-
-            $generatedPins[] = $randomPin;
-
-            $pinList[] = [
-                'pin'        => $randomPin,
-                'id'         => $i + 1,
-                'app_user'   => $request->userId,
-                // 'req_id'     => $balanceRequest->id,
-                'req_id'     => 'w',
-                'req_bal'    => $request->req_bal_amount,
-                'total_pin'  => $request->add_pin_bal,
-                'status'     => 1, // inactive = 2
-                                   // 'status'     => $rowStatus, // Active = 2
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-        }
-
-        $pinJsonPut = $cashOrWallat ? json_encode($pinList) : null; // ✅ only if value is present
-        DB::beginTransaction();
-
-        try {
-            $paymentScreenShot = $uploadFile($request, 'payment_screenShot', 'userPaymentScreenShot');
-
-            // Step 1: Insert request and get its ID
-            $balanceRequestId = DB::table('user_balance_request')->insertGetId([
-                'app_user_id'      => $request->userId,
-                'app_user_name'    => $request->userName,
-                'user_phone'       => $request->userPhone,
-                'add_pin_bal'      => $request->add_pin_bal,
-                'pin_json'         => $pinJsonPut,
-                'req_bal_amount'   => $request->add_balance_amount,
-                'pay_screenshot'   => $paymentScreenShot,
-                'status'           => $rowStatus,                    // ✅ dynamic based on value // Pending = 1, Activ=2
-                'pin_bal_add_type' => $request->cash_or_wallat ?? 1, // Default to 1 (Cash)
-                'created_at'       => now(),
-                'updated_at'       => now(),
-            ]);
-
-            if ($rowStatus == 1) {
-                DB::table('app_users')
-                    ->where('id', $request->userId)
-                    ->decrement('total_withdrawal_req', $request->add_balance_amount);
-            }
-
-            // Step 4: Get current wallet (unchanged)
-            $walletBefore = DB::table('app_users')->where('id', $request->userId)->value('user_wallet') ?? 0;
-
-            // Step 5: Log the transaction
-            DB::table('user_transactions')->insert([
-                'app_user_id'   => $request->userId,
-                'type_id'       => 1, // Add Balance
-                'pin_bal'       => $request->add_pin_bal,
-                'amount'        => $request->add_balance_amount,
-                'wallet_before' => $walletBefore,
-                'wallet_after'  => $walletBefore,
-                'status'        => $rowStatusT,
-                'requested_at'  => now(),
-                'screenshot'    => $paymentScreenShot,
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
-
-            DB::commit();
-
-            return redirect()->route('dashboard.app')->with('success', 'Rs.' . $request->add_balance_amount . ' balance request submitted successfully with ' . $request->add_pin_bal . ' PINs.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Balance request failed: ' . $e->getMessage());
-
-            return redirect()->back()->with('error', 'Something went wrong while submitting your balance request.');
-        }
-    }
-
-// userAddBalance => this funcation work is for when user add Bal and Scershoot REQ
-
-// ************************************************************
-
-// addBalanceTrafer => this funcation work is for when user add trafer by the company bals from admin panel
-    public function addBalanceTrafer(Request $request, $id)
-    {
-        $request->validate([
-            'userBlaAdd' => 'required|numeric',
-        ]);
-
-        // Step 1: Get the balance request by ID
-        $balanceRequest = DB::table('user_balance_request')->where('id', $id)->first();
-
-        if (! $balanceRequest) {
-            return back()->with('error', 'Balance request not found.');
-        }
-
-        // Step 2: Fetch the user
-        $user = DB::table('app_users')->where('id', $balanceRequest->app_user_id)->first();
-
-        if (! $user) {
-            return back()->with('error', 'User not found.');
-        }
-
-        $requestedAmount = (float) $request->userBlaAdd;
-        $walletBefore    = (float) $user->user_wallet;
-        $walletAfter     = $walletBefore + $requestedAmount;
-
-        // dd($walletAfter );
-
-        DB::beginTransaction();
-
-        try {
-            // Step 3: Update balance request status to Done
-            DB::table('user_balance_request')->where('id', $id)->update([
-                'status'     => 1, //active = 2 , inactive=1
-                'updated_at' => now(),
-            ]);
-
-            // Step 4: Update user's wallet
-            DB::table('app_users')->where('id', $user->id)->update([
-                'user_wallet' => $walletAfter,
-            ]);
-
-            // Step 5: Update the transaction to Done
-            DB::table('user_transactions')
-                ->where('app_user_id', $user->id)
-                ->where('type_id', 1) // Add Balance
-                ->where('status', 'Pending')
-                ->where('amount', $requestedAmount)
-                ->orderBy('created_at', 'desc')
-                ->limit(1)
-                ->update([
-                    'wallet_after' => $walletAfter,
-                    'status'       => 'Done',
-                    'done_at'      => now(),
-                    'updated_at'   => now(),
-                ]);
-
-            // Step 6: Generate unique PINs
-            $pinList       = [];
-            $generatedPins = [];
-
-            for ($i = 0; $i < $balanceRequest->add_pin_bal; $i++) {
-                // Generate a unique PIN string composed of:
-                // - 6 random uppercase alphanumeric characters (using Laravel's Str::random)
-                // - Current loop index (i + 1) to ensure uniqueness even within the same request
-                // - User ID who requested the pin generation ($request->userId)
-                // - Related balance request ID ($balanceRequestId)
-                // - Total number of pins being added in this request ($request->add_pin_bal)
-                // Example format: "A1B2C3" + "1" + "101" + "7" + "20" => A1B2C31101720
-                // $randomPin = strtoupper(Str::random(6)) . ($i + 1) . $request->userId . $balanceRequestId . $request->add_pin_bal;
-
-                // Generate until a unique pin is found
-                do {
-                    $randomPin = strtoupper(Str::random(6)) . ($i + 1) . $user->id . $balanceRequest->id . (int) $balanceRequest->add_pin_bal;
-                } while (in_array($randomPin, $generatedPins));
-
-                $generatedPins[] = $randomPin;
-
-                $pinList[] = [
-                    'pin'        => $randomPin,
-                    'id'         => $i + 1,
-                    'app_user'   => $user->id,
-                    'req_id'     => $balanceRequest->id,
-                    'req_bal'    => $balanceRequest->req_bal_amount,
-                    'total_pin'  => $balanceRequest->add_pin_bal,
-                    'status'     => 1, // Inactive
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }
-
-            // Step 7: Store pin list JSON into balance request
-            DB::table('user_balance_request')->where('id', $id)->update([
-                'pin_json' => json_encode($pinList),
-            ]);
-
-            // Step 8: Update user's total_pins count
-            $newTotalPins = (int) $user->total_pins + (int) $balanceRequest->add_pin_bal;
-
-            DB::table('app_users')->where('id', $user->id)->update([
-                'total_pins' => $newTotalPins,
-            ]);
-
-            DB::commit();
-
-            return back()->with('success', 'Balance transferred and PINs generated successfully.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Transfer error: ' . $e->getMessage());
-            return back()->with('error', 'An error occurred while updating balance and generating PINs.');
-        }
-    }
-
-// addBalanceTrafer => this funcation work is for when user add trafer by the company bals from admin panel
-// *************************************************************
-
-    private function getAllPins()
-    {
-        $userId = Session::get('app_user_id'); // ✅ Logged in user ID
-
-        if (! $userId) {
-            return []; // No session, no pins
-        }
-
-        // Fetch requests for this user
-        $allRequests = DB::table('user_balance_request')
-            ->where('app_user_id', $userId)
-            ->select('id', 'pin_json') // ✅ id ও নিলাম
-            ->get();
-
-        $allPins = [];
-
-        foreach ($allRequests as $req) {
-            $pins = json_decode($req->pin_json, true);
-            if (is_array($pins)) {
-                // ✅ প্রত্যেক pin এর সাথে req_id যোগ করো
-                foreach ($pins as &$pin) {
-                    $pin['req_id'] = $req->id;
-                }
-                $allPins = array_merge($allPins, $pins);
-            }
-        }
-
-        return $allPins;
-    }
-
-    public function userPINsList()
-    {
-        // Fetch all pins
-        $allPins  = $this->getAllPins();
-        $allPins1 = $this->getAllPins();
-
-        // Try to get only status = 1 pins first
-        $filteredPins = collect($allPins)->filter(function ($pin) {
-            return $pin['status'] == 1;
-        })->values();
-
-        // If no status = 1 pins found, then take status = 2 pins
-        if ($filteredPins->isEmpty()) {
-            $filteredPins = collect($allPins)->filter(function ($pin) {
-                return $pin['status'] == 2;
-            })->values();
-        }
-
-        // ✅ Count active/used pins for summary
-        $status2Count = collect($allPins)->where('status', 2)->count();
-        $pins         = collect($allPins)->count();
-
-        // ✅ Pagination setup
-        $page    = request('page', 1);
-        $perPage = request('perPage', 20);
-
-        // Slice current page data
-        $currentPageItems = $filteredPins->slice(($page - 1) * $perPage, $perPage)->values();
-
-        // Create paginator
-        $pinsPaginator = new \Illuminate\Pagination\LengthAwarePaginator(
-            $currentPageItems,
-            $filteredPins->count(),
-            $perPage,
-            $page,
-            ['path' => request()->url(), 'query' => request()->query()]
-        );
-
-        return view('userApp.userAppView.userPINsList', compact('pinsPaginator', 'status2Count', 'pins', 'allPins1'));
-    }
-
-    // activateUserPin => this funcation work is for when user activ pin BY click by button useing Ajax
-
-    public function activateUserPin(Request $request)
-    {
-        $request->validate([
-            'pin'    => 'required',
-            'req_id' => 'required|integer',
-        ]);
-
-        $balanceRequest = DB::table('user_balance_request')->where('id', $request->req_id)->first();
-
-        if (! $balanceRequest) {
-            return response()->json(['status' => 'error', 'message' => 'Request not found']);
-        }
-
-        $pinJson    = json_decode($balanceRequest->pin_json, true);
-        $pinUpdated = false;
-
-        foreach ($pinJson as &$pinEntry) {
-            if ($pinEntry['pin'] === $request->pin && $pinEntry['status'] == 1) {
-                $pinEntry['status'] = 2; // Mark as active
-                $pinUpdated         = true;
-                break;
-            }
-        }
-
-        if ($pinUpdated) {
-            DB::table('user_balance_request')
-                ->where('id', $request->req_id)
-                ->update(['pin_json' => json_encode($pinJson)]);
-
-            return response()->json([
-                'status'  => 'success',
-                'message' => 'Pin activated successfully.',
-                'pin'     => $request->pin,
-            ]);
-        }
-
-        return response()->json(['status' => 'error', 'message' => 'Pin already used or invalid.']);
-    }
-
-// activatePinsByCount => this funcation work is for when user activ pin BY in put box bulk submit
-
-    public function activatePinsByCount(Request $request)
-    {
-        $userId = Session::get('app_user_id');
-
-        $request->validate([
-            'count' => 'required|integer|min:1',
-        ]);
-
-        $toActivate     = (int) $request->count;
-        $activatedCount = 0;
-
-        // Step 1: Get all balance requests for this user
-        $balanceRequests = DB::table('user_balance_request')
-            ->where('app_user_id', $userId)
-            ->get();
-
-        if ($balanceRequests->isEmpty()) {
-            return back()->with('error', 'No balance requests found for this user.');
-        }
-
-        // Step 2: Loop through every row for this user
-        foreach ($balanceRequests as $balanceRequest) {
-
-            $pinJson = json_decode($balanceRequest->pin_json, true);
-
-            // যদি json invalid হয় skip করো
-            if (! is_array($pinJson) || empty($pinJson)) {
-                continue;
-            }
-
-            $changed = false;
-
-            // Step 3: Loop inside the JSON pins
-            foreach ($pinJson as &$pinEntry) {
-                if ($activatedCount >= $toActivate) {
-                    break; // done activating
-                }
-
-                if (isset($pinEntry['status']) && $pinEntry['status'] == 1) {
-                    $pinEntry['status'] = 2; // activate it
-                    $activatedCount++;
-                    $changed = true;
-                }
-            }
-
-            // Step 4: Update only if something changed
-            if ($changed) {
-                DB::table('user_balance_request')
-                    ->where('id', $balanceRequest->id)
-                    ->update(['pin_json' => json_encode($pinJson)]);
-            }
-
-            // যদি নির্দিষ্ট সংখ্যা activate হয়ে যায়, তাহলে আর বাকি রো চেক না করো
-            if ($activatedCount >= $toActivate) {
-                break;
-            }
-        }
-
-        // Step 5: Response
-        if ($activatedCount > 0) {
-            return back()->with('success', "{$activatedCount} pins activated successfully.");
-        }
-
-        return back()->with('error', 'No inactive pins found to activate.');
-    }
-
-    /*    return redirect()->route('userLogin.app')->with('success', '<h3 style="color:#fff;"> Registered Successfully.<br> Login User Name = ' . $request->phone_number . '<br>Login Password Is = 000111</h3>'); */
-
-    // withdrawMoneyUserApp => this funcation work is for when user  send a REQ for withdraw BAL from user app
-    public function withdrawMoneyUserApp(Request $request)
-    {
-        $request->validate([
-            'withdraw_req' => 'required|numeric|min:1',
-            'userId'       => 'required|integer',
-            'userName'     => 'required|string|max:100',
-            'userPhone'    => 'required|string|max:15',
-        ]);
-
-        $userId         = $request->userId;
-        $withdrawAmount = floatval($request->withdraw_req);
-
-        // Fetch user
-        $user = DB::table('app_users')->where('id', $userId)->first();
-        if (! $user) {
-            return back()->with('error', 'User not found.');
-        }
-
-        $currentWallet = floatval($user->user_wallet);
-
-        if ($currentWallet < $withdrawAmount) {
-            return back()->with('error', 'Insufficient balance for withdrawal.');
-        }
-
-        $paymentScreenshot = 0; // Default
-
-        DB::beginTransaction();
-        try {
-            // 1. Deduct wallet
-            /*  $newWallet = $currentWallet - $withdrawAmount;
-            DB::table('app_users')->where('id', $userId)->update([
-                'total_withdrawal_req' => $newWallet,
-            ]); */
-
-            // 2. Insert into withdraw request table
-            DB::table('user_withdraw_request')->insert([
-                'app_user_id'    => $userId,
-                'app_user_name'  => $request->userName,
-                'user_phone'     => $request->userPhone,
-                'req_bal_amount' => $withdrawAmount,
-                'pay_screenshot' => $paymentScreenshot,
-                'status'         => 2, // Pending
-                'created_at'     => now(),
-                'updated_at'     => now(),
-            ]);
-
-            // 3. Log user transaction (type_id 4 = Withdrawal)
-            DB::table('user_transactions')->insert([
-                'app_user_id'   => $userId,
-                'type_id'       => 4,
-                'amount'        => $withdrawAmount,
-                'wallet_before' => $currentWallet,
-                'wallet_after'  => $currentWallet,
-                'status'        => 'Pending',
-                'requested_at'  => now(),
-                'done_at'       => null,
-                'screenshot'    => $paymentScreenshot,
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
-
-            DB::commit();
-
-            // Update wallet in session
-            // Session::put('app_user_wallet', $newWallet);
-
-            return back()->with('success', '₹' . number_format($withdrawAmount, 2) . ' withdrawal request submitted successfully. Please wait for approval.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Something went wrong. Try again.');
-        }
-    }
-
-    // withdrawalScrenshortUpload => this funcation work is for when company send BAL a user
-    public function withdrawalScrenshortUpload(Request $request, $id)
-    {
-        $request->validate([
-            'payment_screenshot' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:20480', // 20 MB max
-        ]);
-
-        $withdrawal = DB::table('user_withdraw_request')->where('id', $id)->first();
-
-        if (! $withdrawal) {
-            return back()->with('error', 'Withdrawal request not found.');
-        }
-
-        $filePath = $withdrawal->pay_screenshot;
-
-        if ($request->hasFile('payment_screenshot')) {
-            $file     = $request->file('payment_screenshot');
-            $filename = 'withdraw_' . now()->format('Ymd_His') . '_' . Str::random(5) . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/withdrawalDone'), $filename);
-            $filePath = 'uploads/withdrawalDone/' . $filename;
-        }
-
-        DB::beginTransaction();
-        try {
-            // 1. Update withdrawal request table
-            DB::table('user_withdraw_request')->where('id', $id)->update([
-                'pay_screenshot' => $filePath,
-                'status'         => 1, // Done
-                'updated_at'     => now(),
-            ]);
-
-            DB::table('app_users')
-                ->where('id', $withdrawal->app_user_id)
-                ->decrement('total_withdrawal_req', $withdrawal->req_bal_amount);
-
-            // 2. Update corresponding transaction in user_transactions
-            DB::table('user_transactions')
-                ->where('app_user_id', $withdrawal->app_user_id)
-                ->where('type_id', 4)  // Withdrawal
-                ->whereNull('done_at') // Pending only
-                ->orderByDesc('id')
-                ->limit(1)
-                ->update([
-                    'screenshot' => $filePath,
-                    'status'     => 'Done',
-                    'done_at'    => now(),
-                    'updated_at' => now(),
-                ]);
-
-            DB::commit();
-            return back()->with('success', 'Screenshot uploaded and withdrawal marked as completed.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Something went wrong while updating. Please try again.');
-        }
-    }
-
-// showPackageBuyingRequests => whne user ones buy any pakegs then this show in company dasbord URL- package-buying-request-list
-    public function showPackageBuyingRequests()
-    {
-        $requests = DB::table('user_package_purchases as upp')
-            ->leftJoin('app_users as au', 'upp.app_user_id', '=', 'au.id')
-            ->leftJoin('package_master as pm', 'upp.package_id', '=', 'pm.id')
-            ->select(
-                'upp.id',
-                'au.app_u_name as user_name',
-                'au.phone_number',
-                'upp.amount_paid',
-                'pm.package_name',
-                'upp.created_at'
-            )
-            ->orderBy('upp.created_at', 'desc')
-            ->get();
-
-        return view('admin.logicApp.packageBuyingRequest', compact('requests'));
-    }
-    // showPackageBuyingRequests => whne user ones buy any pakegs then this show in company dasbord URL- package-buying-request-list
-
-    // allTransactionsUserApp => when user do any then it will show url- all-transactions-user-app
-    public function allTransactionsUserApp(Request $request)
-    {
-        // $userId = auth()->user()->id; // or $request->user()->id if using auth guard
-        $userId = session('app_user_id');
-
-        $transactions = DB::table('user_transactions as ut')
-            ->join('transaction_types as tt', 'ut.type_id', '=', 'tt.id')
-            ->select(
-                'ut.*',
-                'tt.name as type'
-            )
-            ->where('ut.app_user_id', $userId)
-            ->orderByDesc('ut.id')
-            ->get();
-
-        return view('userApp.userAppView.allTransactions', compact('transactions'));
-    }
-
-/*
-Start downlinesTree**************************************************
-
-END downlinesTree**************************************************
-
- */
-
-    //***********************Admin Tree */
-
-/*     public function adminMemberTree()
-    {
-        // Fetch all users once
-        $members = DB::table('app_users')->get();
-
-        // Group by introducer_id for fast lookup
-        $groupedMembers = $members->groupBy('introducer_id');
-
-        $levels = $this->buildLevels($groupedMembers, 1, 10); // start from root id=1, 10 levels
-                                                              // dd($levels);
-
-        return view('admin.member_tree', compact('levels'));
-    } */
-
-    // ==========================================
-    // ADMIN MEMBER TREE VIEW
-    // ==========================================
-
-    public function adminMemberTree()
-    {
-        // Get all users with their business data
-        $allUsers = DB::table('app_users')->get();
-
-                                                      // Build nested tree structure
-        $nestedTree = $this->buildAdminNestedTree(1); // Start from root user ID 1
-
-        // Get total statistics
-        $stats = $this->getSystemStatistics();
-
-        return view('admin.member_tree', compact('nestedTree', 'stats', 'allUsers'));
-    }
-
-/*
-    private function buildLevels($groupedMembers, $rootId, $maxLevels = 10)
-    {
-        $levels              = [];
-        $currentLevelUserIds = [$rootId];
-
-        for ($level = 1; $level <= $maxLevels; $level++) {
-            $levelUsers       = collect();
-            $nextLevelUserIds = [];
-
-            foreach ($currentLevelUserIds as $uId) {
-                if (isset($groupedMembers[$uId])) {
-                    $children         = $groupedMembers[$uId];
-                    $levelUsers       = $levelUsers->merge($children);
-                    $nextLevelUserIds = array_merge($nextLevelUserIds, $children->pluck('id')->toArray());
-                }
-            }
-
-            if ($levelUsers->isEmpty()) {
-                break; // stop when no users at this level
-            }
-
-            $levels[$level]      = $levelUsers;
-            $currentLevelUserIds = $nextLevelUserIds;
-        }
-
-        // ✅ Reverse and reindex levels here
-        $reversedLevels = array_reverse($levels, true);
-        $finalLevels    = [];
-        $newLevel       = 1;
-
-        foreach ($reversedLevels as $users) {
-            $finalLevels[$newLevel++] = $users;
-        }
-
-        return $finalLevels;
-    }
- */
-
-    /**
-     * Build nested tree for admin view
-     */
-    private function buildAdminNestedTree($rootUserId, $depth = 1, $parentPath = '')
-    {
-        if ($depth > 10) {
-            return '';
-        }
-
-        $rootUser = DB::table('app_users')->where('id', $rootUserId)->first();
-
-        if (! $rootUser) {
-            return '';
-        }
-
-        $downlines = DB::table('app_users')
-            ->where('introducer_id', $rootUserId)
-            ->get();
-
-        if ($downlines->isEmpty() && $depth > 1) {
-            return '';
-        }
-
-        $html = '';
-
-        // Root user card (only for first level)
-        if ($depth === 1) {
-            $rootData   = $this->getUserBusinessLevelData($rootUserId);
-            $totalUsers = $this->getTotalDownlineCount($rootUserId);
-
-            $html .= '<div class="admin-root-card mb-4">';
-            $html .= $this->buildAdminUserCard($rootData, $totalUsers, true);
-            $html .= '</div>';
-        }
-
-        if (! $downlines->isEmpty()) {
-            $html .= '<div class="accordion admin-nested-accordion" id="admin_accordion_' . $rootUserId . '_' . $depth . '">';
-
-            foreach ($downlines as $index => $member) {
-                $memberData         = $this->getUserBusinessLevelData($member->id);
-                $totalDownlineCount = $this->getTotalDownlineCount($member->id);
-
-                $currentPath = $parentPath ? $parentPath . ' > ' . $member->app_u_name : $member->app_u_name;
-                $accordionId = 'admin_collapse_' . $member->id . '_' . $depth;
-
-                $html .= '<div class="accordion-item mb-2 level-' . $depth . '">';
-
-                // Accordion Header
-                $html .= '<h2 class="accordion-header" id="admin_heading_' . $member->id . '_' . $depth . '">';
-                $html .= '<button class="accordion-button collapsed" type="button"
-                            data-bs-toggle="collapse"
-                            data-bs-target="#' . $accordionId . '"
-                            aria-expanded="false">';
-
-                if ($totalDownlineCount > 0) {
-                    $html .= '<span class="member-count-badge">👥 ' . $totalDownlineCount . '</span>';
-                }
-
-                $html .= '<span style="margin-left: 50px;">';
-                $html .= '👤 <strong>' . htmlspecialchars($member->app_u_name) . '</strong> ';
-                $html .= '[' . htmlspecialchars($member->phone_number) . '] ';
-                $html .= '| 🏆 Level ' . $memberData['qualified_level'] . ' ';
-                $html .= '| 💰 ₹' . number_format($memberData['total_business'], 0);
-                $html .= '</span>';
-
-                $html .= '</button>';
-                $html .= '</h2>';
-
-                // Accordion Body
-                $html .= '<div id="' . $accordionId . '"
-                            class="accordion-collapse collapse"
-                            data-bs-parent="#admin_accordion_' . $rootUserId . '_' . $depth . '">';
-
-                $html .= '<div class="accordion-body">';
-                $html .= '<div class="tree-path">📍 Path: ' . htmlspecialchars($currentPath) . '</div>';
-                $html .= $this->buildAdminDetailCard($memberData);
-
-                // Recursive nested downlines
-                $nestedHtml = $this->buildAdminNestedTree($member->id, $depth + 1, $currentPath);
-
-                if (! empty($nestedHtml)) {
-                    $html .= '<div class="mt-3">';
-                    $html .= '<h6 class="text-primary">⬇️ Direct Downlines:</h6>';
-                    $html .= $nestedHtml;
-                    $html .= '</div>';
-                }
-
-                $html .= '</div>'; // accordion-body
-                $html .= '</div>'; // accordion-collapse
-                $html .= '</div>'; // accordion-item
-            }
-
-            $html .= '</div>'; // accordion
-        }
-
-        return $html;
-    }
-
-    /**
-     * Build admin user card (detailed)
-     */
-    private function buildAdminUserCard($userData, $totalDownlines = 0, $isRoot = false)
-    {
-        $html = '<div class="admin-user-detail-card">';
-
-        if ($isRoot) {
-            $html .= '<h4 class="text-center mb-3">🏢 System Root User</h4>';
-        }
-
-        $html .= '<div class="row">';
-
-        // Left column
-        $html .= '<div class="col-md-4">';
-        $html .= '<p><strong>👤 Name:</strong> ' . htmlspecialchars($userData['name']) . '</p>';
-        $html .= '<p><strong>📞 Phone:</strong> ' . htmlspecialchars($userData['phone']) . '</p>';
-        $html .= '<p><strong>🆔 User ID:</strong> #' . $userData['user_id'] . '</p>';
-        $html .= '<p><strong>👥 Total Downlines:</strong> ' . $totalDownlines . '</p>';
-        $html .= '</div>';
-
-        // Middle column
-        $html .= '<div class="col-md-4">';
-        $html .= '<p><strong>💼 Self Business:</strong> ₹' . number_format($userData['self_business'], 2) . '</p>';
-        $html .= '<p><strong>💰 Total Business:</strong> ₹' . number_format($userData['total_business'], 2) . '</p>';
-        $html .= '<p><strong>🏆 Qualified Level:</strong> <span class="badge bg-primary">Level ' . $userData['qualified_level'] . '</span></p>';
-        $html .= '<p><strong>📈 Next Level Need:</strong> ₹' . number_format($userData['business_needed'], 2) . '</p>';
-        $html .= '</div>';
-
-        // Right column
-        $html .= '<div class="col-md-4">';
-        $html .= '<p><strong>💵 Monthly Salary:</strong> ₹' . number_format($userData['salary'], 2) . '</p>';
-        $html .= '<p><strong>📊 Top Leg:</strong> ₹' . number_format($userData['top_leg_business'], 2) . ' (' . $userData['top_leg_percentage'] . '%)</p>';
-
-        // 40:60 Status
-        if ($userData['qualified_level'] >= 4) {
-            $statusClass = $userData['is_4060_compliant'] ? 'bg-success' : 'bg-danger';
-            $html .= '<p><strong>🔐 40:60 Status:</strong> <span class="badge ' . $statusClass . '">' . $userData['ratio_status'] . '</span></p>';
-        } else {
-            $html .= '<p><strong>🔐 40:60 Status:</strong> <span class="badge bg-secondary">N/A</span></p>';
-        }
-
-        $html .= '<p><strong>🧾 Salary Eligible:</strong> ';
-        $html .= $userData['salary_eligible'] === 'Yes'
-            ? '<span class="badge bg-success">✅ Yes</span>'
-            : '<span class="badge bg-secondary">❌ No</span>';
-        $html .= '</p>';
-        $html .= '</div>';
-
-        $html .= '</div>'; // row
-
-        // Monthly commissions (if available)
-        if (isset($userData['monthly_commissions'])) {
-            $comm = $userData['monthly_commissions'];
-            $html .= '<hr>';
-            $html .= '<div class="row text-center">';
-            $html .= '<div class="col-md-4">';
-            $html .= '<small class="text-muted">This Month Referral</small>';
-            $html .= '<h5>₹' . number_format($comm['total_referral_income'], 0) . '</h5>';
-            $html .= '</div>';
-            $html .= '<div class="col-md-4">';
-            $html .= '<small class="text-muted">This Month Salary</small>';
-            $html .= '<h5>₹' . number_format($comm['total_salary'], 0) . '</h5>';
-            $html .= '</div>';
-            $html .= '<div class="col-md-4">';
-            $html .= '<small class="text-muted">Total Earnings</small>';
-            $html .= '<h5 class="text-success">₹' . number_format($comm['total_monthly_earnings'], 0) . '</h5>';
-            $html .= '</div>';
-            $html .= '</div>';
-        }
-
-        $html .= '</div>';
-
-        return $html;
-    }
-
-    /**
-     * Build admin detail card (compact for nested items)
-     */
-    private function buildAdminDetailCard($userData)
-    {
-        $html = '<div class="user-info-card">';
-        $html .= '<div class="row">';
-
-        $html .= '<div class="col-md-6">';
-        $html .= '<p class="mb-2"><strong>👤 Name:</strong> ' . htmlspecialchars($userData['name']) . '</p>';
-        $html .= '<p class="mb-2"><strong>📞 Phone:</strong> ' . htmlspecialchars($userData['phone']) . '</p>';
-        $html .= '<p class="mb-2"><strong>💼 Self Business:</strong> ₹' . number_format($userData['self_business'], 2) . '</p>';
-        $html .= '<p class="mb-2"><strong>💰 Total Business:</strong> ₹' . number_format($userData['total_business'], 2) . '</p>';
-        $html .= '</div>';
-
-        $html .= '<div class="col-md-6">';
-        $html .= '<p class="mb-2"><strong>🏆 Level:</strong> <span class="badge bg-primary">Level ' . $userData['qualified_level'] . '</span></p>';
-        $html .= '<p class="mb-2"><strong>💵 Salary:</strong> ₹' . number_format($userData['salary'], 2) . '</p>';
-        $html .= '<p class="mb-2"><strong>📊 Top Leg:</strong> ' . $userData['top_leg_percentage'] . '%</p>';
-
-        if ($userData['qualified_level'] >= 4) {
-            $statusBadge = $userData['is_4060_compliant']
-                ? '<span class="badge bg-success">✅ Unlocked</span>'
-                : '<span class="badge bg-warning">🔒 Locked</span>';
-            $html .= '<p class="mb-2"><strong>🔐 40:60:</strong> ' . $statusBadge . '</p>';
-        }
-
-        $html .= '</div>';
-        $html .= '</div>';
-        $html .= '</div>';
-
-        return $html;
-    }
-
-    /**
-     * Get system-wide statistics
-     */
-    private function getSystemStatistics()
-    {
-        $totalUsers  = DB::table('app_users')->count();
-        $activeUsers = DB::table('app_users')->where('status', 1)->count();
-
-        $totalBusiness = DB::table('user_package_purchases')->sum('amount_paid');
-
-        $levelDistribution = [];
-        for ($i = 0; $i <= 10; $i++) {
-            $count = DB::table('user_level_status')
-                ->where('status', 1)
-                ->where('level_no', $i)
-                ->distinct('app_user_id')
-                ->count('app_user_id');
-            $levelDistribution[$i] = $count;
-        }
-
-        $thisMonthStart    = Carbon::now()->startOfMonth();
-        $thisMonthEarnings = DB::table('user_transactions')
-            ->where('created_at', '>=', $thisMonthStart)
-            ->where('status', 'Done')
-            ->whereIn('type_id', [5, 6])
-            ->sum('amount');
-
-        return [
-            'total_users'         => $totalUsers,
-            'active_users'        => $activeUsers,
-            'total_business'      => $totalBusiness,
-            'level_distribution'  => $levelDistribution,
-            'this_month_earnings' => $thisMonthEarnings,
-        ];
-    }
-
-    /**
-     * Export MLM tree to Excel
-     */
-    public function exportToExcel()
-    {
-        $allUsers = DB::table('app_users')->get();
-
-        $exportData = [];
-
-        foreach ($allUsers as $user) {
-            $userData      = $this->getUserBusinessLevelData($user->id);
-            $downlineCount = $this->getTotalDownlineCount($user->id);
-
-            $exportData[] = [
-                'User ID'             => $user->id,
-                'Name'                => $user->app_u_name,
-                'Phone'               => $user->phone_number,
-                'Introducer ID'       => $user->introducer_id ?? 'Root',
-                'Self Business'       => $userData['self_business'],
-                'Total Business'      => $userData['total_business'],
-                'Qualified Level'     => $userData['qualified_level'],
-                'Top Leg %'           => $userData['top_leg_percentage'],
-                '40:60 Status'        => $userData['ratio_status'],
-                'Monthly Salary'      => $userData['salary'],
-                'Salary Eligible'     => $userData['salary_eligible'],
-                'Total Downlines'     => $downlineCount,
-                'This Month Earnings' => $userData['monthly_commissions']['total_monthly_earnings'] ?? 0,
-                'Join Date'           => $user->created_at,
-            ];
-        }
-
-        // Create CSV
-        $filename = 'mlm_tree_export_' . date('Y-m-d_His') . '.csv';
-        $handle   = fopen('php://temp', 'r+');
-
-        // Add headers
-        fputcsv($handle, array_keys($exportData[0]));
-
-        // Add data
-        foreach ($exportData as $row) {
-            fputcsv($handle, $row);
-        }
-
-        rewind($handle);
-        $csv = stream_get_contents($handle);
-        fclose($handle);
-
-        return response($csv)
-            ->header('Content-Type', 'text/csv')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
-    }
-
-    /**
-     * Get detailed user report (for single user analysis)
-     */
-    public function getUserReport($userId)
-    {
-        $userData      = $this->getUserBusinessLevelData($userId);
-        $downlineCount = $this->getTotalDownlineCount($userId);
-
-        $directDownlines = DB::table('app_users')
-            ->where('introducer_id', $userId)
-            ->get()
-            ->map(fn($member) => $this->getUserBusinessLevelData($member->id));
-
-        $monthlyBreakdown = [];
-        for ($i = 1; $i <= 12; $i++) {
-            $startOfMonth = Carbon::now()->subMonths(12 - $i)->startOfMonth();
-            $endOfMonth   = Carbon::now()->subMonths(12 - $i)->endOfMonth();
-
-            $income = DB::table('user_transactions')
-                ->where('app_user_id', $userId)
-                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                ->where('status', 'Done')
-                ->whereIn('type_id', [5, 6])
-                ->sum('amount');
-
-            $monthlyBreakdown[] = [
-                'month'  => $startOfMonth->format('M Y'),
-                'income' => $income,
-            ];
-        }
-
-        return view('admin.user_report', compact(
-            'userData',
-            'downlineCount',
-            'directDownlines',
-            'monthlyBreakdown'
-        ));
-    }
-
-    /**
-     * Search users by criteria
-     */
-    public function searchUsers(Request $request)
-    {
-        $query = DB::table('app_users');
-
-        if ($request->filled('name')) {
-            $query->where('app_u_name', 'like', '%' . $request->name . '%');
-        }
-
-        if ($request->filled('phone')) {
-            $query->where('phone_number', 'like', '%' . $request->phone . '%');
-        }
-
-        if ($request->filled('level')) {
-            $userIds = DB::table('user_level_status')
-                ->where('level_no', $request->level)
-                ->where('status', 1)
-                ->pluck('app_user_id');
-
-            $query->whereIn('id', $userIds);
-        }
-
-        $users = $query->paginate(50);
-
-        $usersWithData = $users->map(fn($user) => $this->getUserBusinessLevelData($user->id));
-
-        return view('admin.logicApp.search_results', compact('usersWithData', 'users'));
-    }
-
-    /**
-     * Get level-wise statistics
-     */
-    public function getLevelStatistics()
-    {
-        $levelStats = [];
-
-        for ($level = 1; $level <= 10; $level++) {
-            $userIds = DB::table('user_level_status')
-                ->where('level_no', $level)
-                ->where('status', 1)
-                ->pluck('app_user_id');
-
-            $totalBusiness   = 0;
-            $totalSalaryPaid = 0;
-            $compliantUsers  = 0;
-
-            foreach ($userIds as $userId) {
-                $userData = $this->getUserBusinessLevelData($userId);
-                $totalBusiness += $userData['total_business'];
-                $totalSalaryPaid += $userData['monthly_commissions']['total_salary'] ?? 0;
-
-                if (! empty($userData['is_4060_compliant'])) {
-                    $compliantUsers++;
-                }
-            }
-
-            $levelStats[] = [
-                'level'             => $level,
-                'user_count'        => count($userIds),
-                'total_business'    => $totalBusiness,
-                'avg_business'      => count($userIds) > 0 ? $totalBusiness / count($userIds) : 0,
-                'total_salary_paid' => $totalSalaryPaid,
-                'compliant_users'   => $compliantUsers,
-                'compliance_rate'   => count($userIds) > 0 ? ($compliantUsers / count($userIds)) * 100 : 0,
-            ];
-        }
-
-        return view('admin.level_statistics', compact('levelStats'));
-    }
-
-    /**
-     * Recalculate all user levels (Admin action)
-     */
-    public function recalculateAllLevels()
-    {
-        try {
-            DB::beginTransaction();
-            $allUsers = DB::table('app_users')->pluck('id');
-            $updated  = 0;
-
-            foreach ($allUsers as $userId) {
-                $this->updateUserLevelAdmin($userId);
-                $updated++;
-            }
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => "Successfully recalculated levels for {$updated} users",
-                'updated_count' => $updated,
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Level recalculation failed: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to recalculate levels: ' . $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Update user level (called by recalculate)
-     */
-    private function updateUserLevelAdmin($userId)
-    {
-        $thresholds = $this->getLevelThresholds();
-        $legs       = $this->getDownlineBusinessForUser($userId);
-
-        if (empty($legs)) {
-            for ($level = 1; $level <= 10; $level++) {
-                DB::table('user_level_status')->updateOrInsert(
-                    ['app_user_id' => $userId, 'level_no' => $level],
-                    [
-                        'status'              => 0,
-                        'business_volume'     => 0,
-                        'top_leg_business'    => 0,
-                        'other_legs_business' => 0,
-                        'updated_at'          => now(),
-                    ]
-                );
-            }
-            return 0;
-        }
-
-        $totalBusiness  = collect($legs)->sum('total_business');
-        $topLeg         = collect($legs)->max('total_business');
-        $otherBusiness  = $totalBusiness - $topLeg;
-        $qualifiedLevel = 0;
-
-        for ($level = 1; $level <= 10; $level++) {
-            $required = $thresholds[$level];
-
-            if ($level >= 4) {
-                $maxTopLegAllowed = $totalBusiness * 0.60;
-                $effectiveTopLeg  = min($topLeg, $maxTopLegAllowed);
-                $validBusiness    = $effectiveTopLeg + $otherBusiness;
-            } else {
-                $validBusiness = $totalBusiness;
-            }
-
-            $isQualified = ($validBusiness >= $required);
-
-            $existingStatus = DB::table('user_level_status')
-                ->where(['app_user_id' => $userId, 'level_no' => $level])
-                ->first();
-
-            $wasUnlocked = ($existingStatus && $existingStatus->status == 1);
-
-            if ($isQualified) {
-                $qualifiedLevel = $level;
-
-                DB::table('user_level_status')->updateOrInsert(
-                    ['app_user_id' => $userId, 'level_no' => $level],
-                    [
-                        'status'              => 1,
-                        'business_volume'     => $validBusiness,
-                        'top_leg_business'    => $topLeg,
-                        'other_legs_business' => $otherBusiness,
-                        'updated_at'          => now(),
-                    ]
-                );
-
-                if (! $wasUnlocked && $level >= 4) {
-                    $this->assignSalaryForLevelAdmin($userId, $level, $validBusiness);
-                }
-            } else {
-                DB::table('user_level_status')->updateOrInsert(
-                    ['app_user_id' => $userId, 'level_no' => $level],
-                    [
-                        'status'              => 0,
-                        'business_volume'     => $validBusiness,
-                        'top_leg_business'    => $topLeg,
-                        'other_legs_business' => $otherBusiness,
-                        'updated_at'          => now(),
-                    ]
-                );
-                break;
-            }
-        }
-
-        return $qualifiedLevel;
-    }
-
-    /**
-     * Assign salary when level unlocks
-     */
-    private function assignSalaryForLevelAdmin($userId, $levelNo, $businessVolume)
-    {
-        $config = $this->getLevelSalaryConfig();
-
-        if (! isset($config[$levelNo])) {
-            return;
-        }
-
-        [$salaryAmount, $months] = $config[$levelNo];
-
-        $start  = Carbon::now()->startOfDay();
-        $next   = $start->copy()->addMonth();
-        $expiry = $start->copy()->addMonths($months);
-
-        $salaryJson = [
-            'level'                     => $levelNo,
-            'salary_amount'             => $salaryAmount,
-            'months_total'              => $months,
-            'months_paid'               => 0,
-            'business_volume_at_unlock' => $businessVolume,
-            'start_date'                => $start->toDateString(),
-            'next_payment_date'         => $next->toDateString(),
-            'expiry_date'               => $expiry->toDateString(),
-            'status'                    => 'active',
-        ];
-
-        DB::table('app_users')->where('id', $userId)->update([
-            'user_salary' => json_encode($salaryJson),
-            'updated_at'  => now(),
-        ]);
-
-        Log::info("Admin: Salary assigned to User #{$userId}: Level {$levelNo}");
-    }
-
-    // ****************************************************
-
-    public function getDownlineIncome($id)
-    {
-        $allUserIds = $this->getAllDownlineUserIds($id);
-
-        $downlines = DB::table('app_users as au')
-            ->leftJoin('user_package_purchases as upp', 'au.id', '=', 'upp.app_user_id')
-            ->whereIn('au.id', $allUserIds)
-            ->select('au.app_u_name as name', 'au.phone_number as phone', 'upp.amount_paid as amount')
-            ->get();
-
-        return response()->json([
-            'downlines' => $downlines,
-        ]);
-    }
-
-    private function getAllDownlineUserIds($parentId)
-    {
-        $ids     = [];
-        $directs = DB::table('app_users')->where('introducer_id', $parentId)->pluck('id');
-
-        foreach ($directs as $id) {
-            $ids[] = $id;
-            $ids   = array_merge($ids, $this->getAllDownlineUserIds($id));
-        }
-
-        return $ids;
-    }
-
-    // *********************************************************************
-
-    public function updatePassword(Request $request)
-    {
-        $userId    = session('app_user_id');
-        $userPhone = session('app_user_phone');
-
-        if (! $userId) {
-            return response()->json(['success' => false, 'message' => 'User not authenticated.']);
-        }
-
-        // Validate file types
-        $request->validate([
-            'upi_qr_code'  => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
-            'user_pic_img' => 'nullable|file|mimes:jpeg,png,jpg|max:2048',
-        ]);
-
-        // Check password match
-        if ($request->new_password !== $request->confirm_password) {
-            return response()->json(['success' => false, 'message' => 'Passwords do not match.']);
-        }
-
-        // Upload helper
-        $uploadFile = function ($field, $folder, $prefix = '') use ($request) {
-            if ($request->hasFile($field)) {
-                $file     = $request->file($field);
-                $filename = 'USER_' . $prefix . '_' . time() . '_' . $file->getClientOriginalName();
-                $file->move(public_path("uploads/$folder"), $filename);
-                return "uploads/$folder/" . $filename;
-            }
-            return null;
-        };
-
-        // Upload files if present
-        $qrPath  = $uploadFile('upi_qr_code', 'qr_user', 'qr');
-        $picPath = $uploadFile('user_pic_img', 'user_pics', 'pic');
-
-        // Prepare update data
-        $updateData = [
-            // 'password' => Hash::make($request->new_password),
-            'bank_name'       => $request->bank_name,
-            'ifsc_code'       => $request->ifsc_code,
-            'bank_account_no' => $request->bank_account_no,
-            'upi_id'          => $request->upi_id,
-            'updated_at'      => now(),
-        ];
-
-        // Check if new password is provided
-        if ($request->filled('new_password')) {
-            $updateData['password'] = Hash::make($request->new_password);
-        }
-
-        if ($qrPath) {
-            $updateData['upi_qr_code'] = $qrPath;
-        }
-
-        if ($picPath) {
-            $updateData['user_pic_img'] = $picPath;
-        }
-
-        // Update user
-        DB::table('app_users')->where('id', $userId)->update($updateData);
-
-        return response()->json([
-            'success'          => true,
-            'message'          => 'Password & bank details updated successfully.',
-            'redirect'         => true,
-            'redirect_url'     => route('userLogin.app'),
-            'password_message' => '<h3 style="color:#fff;">Your Login Id-' . $userPhone . ' and new password is: <strong>' . $request->new_password . '</strong><br>Save it carefully.</h3>',
-        ]);
-    }
-
-    public function getUserData()
-    {
-        $userId = session('app_user_id');
-        $user   = DB::table('app_users')->where('id', $userId)->first();
-
-        return response()->json($user);
-    }
-
-    public function adminLoginAsUser($userId)
-    {
-        $user = DB::table('app_users')->where('id', $userId)->first();
-
-        if (! $user) {
-            return redirect()->back()->with('error', 'User not found.');
-        }
-
-        // Set session variables to simulate login
-        session([
-            'app_user_id'     => $user->id,
-            'app_user_name'   => $user->app_u_name,
-            'app_user_wallet' => $user->user_wallet,
-            'app_user_phone'  => $user->phone_number,
-        ]);
-
-        return redirect()->route('user.dashboard')->with('success', '🔑 You are now logged in as: ' . $user->app_u_name);
-    }
-
-    // buyPackage => this funcation work is for when company send BAL a user
-
-    // ==========================================
-    // LEVEL CONFIGURATION
-    // ==========================================
-
-    private function getLevelThresholds(): array
-    {
-        return [
-            1  => 5000,
-            2  => 25000,
-            3  => 125000,
-            4  => 500000,
-            5  => 1500000,
-            6  => 5000000,
-            7  => 17500000,
-            8  => 60000000,
-            9  => 200000000,
-            10 => 750000000,
-        ];
-    }
-
-    private function getLevelPercents(): array
-    {
-        return [
-            1  => 2.00,
-            2  => 1.50,
-            3  => 1.00,
-            4  => 0.75,
-            5  => 0.50,
-            6  => 0.25,
-            7  => 0.25,
-            8  => 0.25,
-            9  => 0.25,
-            10 => 0.25,
-        ];
-    }
-
-    private function getLevelSalaryConfig(): array
-    {
-        return [
-            4  => [3500.00, 3],
-            5  => [7000.00, 3],
-            6  => [17500.00, 3],
-            7  => [42000.00, 3],
-            8  => [105000.00, 3],
-            9  => [350000.00, 3],
-            10 => [1400000.00, 3],
-        ];
-    }
-
-    // ==========================================
-    // PACKAGE PURCHASE
-    // ==========================================
-
-    public function buyPackage(Request $request)
-    {
-        $userId           = Session::get('app_user_id');
-        $introducer_id    = Session::get('introducer_id');
-        $introducer_phone = Session::get('introducer_phone');
-
-        if (! $userId) {
-            return redirect()->route('userLogin.app')->with('error', 'You must be logged in to buy a package.');
-        }
-
-        $packageId = $request->package_id;
-
-        DB::beginTransaction();
-        try {
-            $user    = DB::table('app_users')->where('id', $userId)->lockForUpdate()->first();
-            $package = DB::table('package_master')->where('id', $packageId)->first();
-
-            if (! $user || ! $package) {
-                DB::rollBack();
-                return back()->with('error', 'User or Package not found.');
-            }
-
-            $walletBefore  = (float) $user->pin_active_bal;
-            $packageAmount = round((float) ($package->package_amount ?? $package->package_total_amount ?? 0), 2);
-
-            if ($walletBefore < $packageAmount) {
-                DB::rollBack();
-                return back()->with('error', 'Insufficient wallet balance.');
-            }
-
-            $affected = DB::table('app_users')
-                ->where('id', $userId)
-                ->where('pin_active_bal', '>=', $packageAmount)
-                ->decrement('pin_active_bal', $packageAmount);
-
-            if ($affected === 0) {
-                DB::rollBack();
-                return back()->with('error', 'Balance update failed.');
-            }
-
-            // 103% logic (2.03x return)
-            $pakeg103 = round($packageAmount * 2.03, 2);
-            DB::table('app_users')->where('id', $userId)->increment('total_pakeg_amount', $pakeg103);
-            DB::table('app_users')->where('id', $userId)->increment('life_time_eran', $pakeg103);
-
-            $walletAfter = (float) DB::table('app_users')->where('id', $userId)->value('pin_active_bal');
-
-            // Record purchase
-            $purchaseId = DB::table('user_package_purchases')->insertGetId([
-                'app_user_id'      => $userId,
-                'package_id'       => $packageId,
-                'introducer_id'    => $introducer_id,
-                'introducer_phone' => $introducer_phone,
-                'amount_paid'      => $packageAmount,
-                'is_credited'      => 0,
-                'created_at'       => now(),
-                'updated_at'       => now(),
-            ]);
-
-            // Transaction log
-            DB::table('user_transactions')->insert([
-                'app_user_id'   => $userId,
-                'type_id'       => 2,
-                'amount'        => $packageAmount,
-                'wallet_before' => $walletBefore,
-                'wallet_after'  => $walletAfter,
-                'status'        => 'Done',
-                'requested_at'  => now(),
-                'done_at'       => now(),
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
-
-            // 🔥 Update all upline levels and distribute income
-            $this->updateAllUplineLevels($userId);
-            $this->distributeLevelIncome($userId, $packageAmount, $purchaseId);
-
-            DB::table('app_users')->where('id', $userId)->update(['updated_at' => now()]);
-            Session::put('app_user_wallet', $walletAfter);
-
-            DB::commit();
-            return back()->with('success', 'Package purchased successfully!');
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('buyPackage error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
-            return back()->with('error', 'Something went wrong: ' . $e->getMessage());
-        }
-    }
-
-    // ==========================================
-    // UPDATE ALL UPLINE LEVELS (CRITICAL)
-    // ==========================================
-
-    private function updateAllUplineLevels($startUserId)
-    {
-        $currentUserId  = $startUserId;
-        $processedUsers = [];
-
-        // Traverse up the tree and update each upline
-        while ($currentUserId) {
-            $introducerId = DB::table('app_users')
-                ->where('id', $currentUserId)
-                ->value('introducer_id');
-
-            if (! $introducerId || in_array($introducerId, $processedUsers)) {
-                break;
-            }
-
-            // Update this upline's level
-            $this->updateUserLevel($introducerId);
-
-            $processedUsers[] = $introducerId;
-            $currentUserId    = $introducerId;
-        }
-    }
-
-    // ==========================================
-    // UPDATE USER LEVEL (WITH 40:60 RULE)
-    // ==========================================
-
-    private function updateUserLevel($userId)
-    {
-        $thresholds = $this->getLevelThresholds();
-        $legs       = $this->getDownlineBusinessForUser($userId);
-
-        if (empty($legs)) {
-            // No downlines - stays at level 0
-            for ($level = 1; $level <= 10; $level++) {
-                DB::table('user_level_status')->updateOrInsert(
-                    ['app_user_id' => $userId, 'level_no' => $level],
-                    [
-                        'status'              => 0,
-                        'business_volume'     => 0,
-                        'top_leg_business'    => 0,
-                        'other_legs_business' => 0,
-                        'updated_at'          => now(),
-                    ]
-                );
-            }
-            return 0;
-        }
-
-        $totalBusiness = collect($legs)->sum('total_business');
-        $topLeg        = collect($legs)->max('total_business');
-        $otherBusiness = $totalBusiness - $topLeg;
-
-        $qualifiedLevel = 0;
-
-        // Check each level sequentially
-        for ($level = 1; $level <= 10; $level++) {
-            $required = $thresholds[$level];
-
-            if ($level >= 4) {
-                // 40:60 Rule: Max 60% from top leg, min 40% from other legs
-                $maxTopLegAllowed = $totalBusiness * 0.60;
-                $effectiveTopLeg  = min($topLeg, $maxTopLegAllowed);
-                $validBusiness    = $effectiveTopLeg + $otherBusiness;
-            } else {
-                $validBusiness = $totalBusiness;
-            }
-
-            $isQualified = ($validBusiness >= $required);
-
-            // Check if this level was already unlocked
-            $existingStatus = DB::table('user_level_status')
-                ->where(['app_user_id' => $userId, 'level_no' => $level])
-                ->first();
-
-            $wasUnlocked = ($existingStatus && $existingStatus->status == 1);
-
-            if ($isQualified) {
-                $qualifiedLevel = $level;
-
-                DB::table('user_level_status')->updateOrInsert(
-                    ['app_user_id' => $userId, 'level_no' => $level],
-                    [
-                        'status'              => 1,
-                        'business_volume'     => $validBusiness,
-                        'top_leg_business'    => $topLeg,
-                        'other_legs_business' => $otherBusiness,
-                        'updated_at'          => now(),
-                    ]
-                );
-
-                // Assign salary only on FIRST unlock
-                if (! $wasUnlocked && $level >= 4) {
-                    $this->assignSalaryForLevel($userId, $level, $validBusiness);
-                }
-            } else {
-                // Not qualified - update status
-                DB::table('user_level_status')->updateOrInsert(
-                    ['app_user_id' => $userId, 'level_no' => $level],
-                    [
-                        'status'              => 0,
-                        'business_volume'     => $validBusiness,
-                        'top_leg_business'    => $topLeg,
-                        'other_legs_business' => $otherBusiness,
-                        'updated_at'          => now(),
-                    ]
-                );
-
-                // Can't qualify for higher levels if this one fails
-                break;
-            }
-        }
-
-        return $qualifiedLevel;
-    }
-
-    // ==========================================
-    // DISTRIBUTE LEVEL INCOME
-    // ==========================================
-
-    private function distributeLevelIncome($buyerId, $packageAmount, $purchaseId = null)
-    {
-        $levelPercents = $this->getLevelPercents();
-        $currentUserId = $buyerId;
-
-        for ($level = 1; $level <= 10; $level++) {
-            $introducerId = DB::table('app_users')
-                ->where('id', $currentUserId)
-                ->value('introducer_id');
-
-            if (! $introducerId) {
-                break; // No more uplines
-            }
-
-            $introducer = DB::table('app_users')
-                ->where('id', $introducerId)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $introducer) {
-                $currentUserId = $introducerId;
-                continue;
-            }
-
-            // Check if this introducer has qualified for this level
-            $qualifiedLevel = $this->getUserQualifiedLevel($introducer->id);
-
-            // Only give income if introducer has qualified for this level or higher
-            if ($qualifiedLevel >= $level) {
-                $percent      = $levelPercents[$level] ?? 0;
-                $incomeAmount = round(($packageAmount * $percent) / 100, 2);
-
-                if ($incomeAmount > 0) {
-                    $refWalletBefore = (float) $introducer->referral_income;
-
-                    DB::table('app_users')->where('id', $introducer->id)->update([
-                        'referral_income' => DB::raw("referral_income + {$incomeAmount}"),
-                        'life_time_eran' => DB::raw("life_time_eran + {$incomeAmount}"),
-                        'updated_at' => now(),
-                    ]);
-
-                    $refWalletAfter = $refWalletBefore + $incomeAmount;
-
-                    DB::table('user_transactions')->insert([
-                        'app_user_id'   => $introducer->id,
-                        'type_id'       => 5,
-                        'amount'        => $incomeAmount,
-                        'wallet_before' => $refWalletBefore,
-                        'wallet_after'  => $refWalletAfter,
-                        'status'        => 'Done',
-                        'description'   => "Level {$level} income from User #{$buyerId} (Package #{$purchaseId})",
-                        'requested_at' => now(),
-                        'done_at'      => now(),
-                        'created_at'   => now(),
-                        'updated_at'   => now(),
-                    ]);
-
-                    Log::info("Level {$level} income: ₹{$incomeAmount} credited to User #{$introducer->id} from User #{$buyerId}");
-                }
-            } else {
-                Log::info("Level {$level} income SKIPPED for User #{$introducer->id} (Qualified Level: {$qualifiedLevel})");
-            }
-
-            $currentUserId = $introducer->id;
-        }
-    }
-
-    // ==========================================
-    // GET USER'S QUALIFIED LEVEL
-    // ==========================================
-
-    private function getUserQualifiedLevel($userId)
-    {
-        $maxLevel = DB::table('user_level_status')
-            ->where('app_user_id', $userId)
-            ->where('status', 1)
-            ->max('level_no');
-
-        // return $maxLevel ?? 0;
-        return $maxLevel ?? 1;
-    }
-    // ==========================================
-    // GET DOWNLINE BUSINESS FOR USER
-    // ==========================================
-
-    private function getDownlineBusinessForUser($userId)
-    {
-        $directDownlines = DB::table('app_users')
-            ->where('introducer_id', $userId)
-            ->get(['id']);
-
-        $result = [];
-
-        foreach ($directDownlines as $downline) {
-            $business = $this->calculateRecursiveBusiness($downline->id);
-            $result[] = [
-                'downline_id'    => $downline->id,
-                'total_business' => $business,
-            ];
-        }
-
-        return $result;
-    }
-
-    // ==========================================
-    // CALCULATE RECURSIVE BUSINESS (WITH CACHE)
-    // ==========================================
-
-    private function calculateRecursiveBusiness($userId)
-    {
-        static $cache = [];
-
-        if (isset($cache[$userId])) {
-            return $cache[$userId];
-        }
-
-        // Self business
-        $selfBusiness = (float) DB::table('user_package_purchases')
-            ->where('app_user_id', $userId)
-            ->sum('amount_paid');
-
-        // Get all downlines
-        $downlines = DB::table('app_users')
-            ->where('introducer_id', $userId)
-            ->pluck('id');
-
-        $total = $selfBusiness;
-
-        foreach ($downlines as $downId) {
-            $total += $this->calculateRecursiveBusiness($downId);
-        }
-
-        $cache[$userId] = $total;
-        return $total;
-    }
-
-    // ==========================================
-    // ASSIGN SALARY FOR LEVEL
-    // ==========================================
-
-    private function assignSalaryForLevel($userId, $levelNo, $businessVolume)
-    {
-        $config = $this->getLevelSalaryConfig();
-
-        if (! isset($config[$levelNo])) {
-            return; // No salary for this level
-        }
-
-        [$salaryAmount, $months] = $config[$levelNo];
-
-        $start  = Carbon::now()->startOfDay();
-        $next   = $start->copy()->addMonth();
-        $expiry = $start->copy()->addMonths($months);
-
-        $salaryJson = [
-            'level'                     => $levelNo,
-            'salary_amount'             => $salaryAmount,
-            'months_total'              => $months,
-            'months_paid'               => 0,
-            'business_volume_at_unlock' => $businessVolume,
-            'start_date'                => $start->toDateString(),
-            'next_payment_date'         => $next->toDateString(),
-            'expiry_date'               => $expiry->toDateString(),
-            'status'                    => 'active',
-        ];
-
-        DB::table('app_users')->where('id', $userId)->update([
-            'user_salary' => json_encode($salaryJson),
-            'updated_at'  => now(),
-        ]);
-
-        Log::info("Salary assigned to User #{$userId}: Level {$levelNo}, ₹{$salaryAmount}/month for {$months} months");
-    }
-
-    // ==========================================
-    // PROCESS MONTHLY SALARIES (CRON JOB)
-    // ==========================================
-
-    public function processMonthlyPayments()
-    {
-        $users = DB::table('app_users')
-            ->whereNotNull('user_salary')
-            ->get();
-
-        $today     = Carbon::now()->startOfDay();
-        $processed = 0;
-
-        foreach ($users as $user) {
-            $salary = json_decode($user->user_salary, true);
-
-            if (! $salary || $salary['status'] !== 'active') {
-                continue;
-            }
-
-            $nextPaymentDate = Carbon::parse($salary['next_payment_date'])->startOfDay();
-
-            if ($today->gte($nextPaymentDate) && $salary['months_paid'] < $salary['months_total']) {
-                DB::beginTransaction();
-                try {
-                    $salaryAmount = $salary['salary_amount'];
-                    $walletBefore = (float) $user->referral_income;
-
-                    // Credit salary
-                    DB::table('app_users')->where('id', $user->id)->update([
-                        'referral_income' => DB::raw("referral_income + {$salaryAmount}"),
-                        'life_time_eran' => DB::raw("life_time_eran + {$salaryAmount}"),
-                        'updated_at' => now(),
-                    ]);
-
-                    $walletAfter = $walletBefore + $salaryAmount;
-
-                    // Log transaction
-                    DB::table('user_transactions')->insert([
-                        'app_user_id'   => $user->id,
-                        'type_id'       => 6, // Salary type
-                        'amount'        => $salaryAmount,
-                        'wallet_before' => $walletBefore,
-                        'wallet_after'  => $walletAfter,
-                        'status'        => 'Done',
-                        'description'   => "Monthly Salary - Level {$salary['level']}",
-                        'requested_at' => now(),
-                        'done_at'      => now(),
-                        'created_at'   => now(),
-                        'updated_at'   => now(),
-                    ]);
-
-                    // Update salary JSON
-                    $salary['months_paid']++;
-                    $salary['next_payment_date'] = $nextPaymentDate->copy()->addMonth()->toDateString();
-
-                    if ($salary['months_paid'] >= $salary['months_total']) {
-                        $salary['status'] = 'completed';
-                    }
-
-                    DB::table('app_users')->where('id', $user->id)->update([
-                        'user_salary' => json_encode($salary),
-                        'updated_at'  => now(),
-                    ]);
-
-                    DB::commit();
-                    $processed++;
-
-                    Log::info("Salary paid to User #{$user->id}: ₹{$salaryAmount}");
-
-                } catch (\Throwable $e) {
-                    DB::rollBack();
-                    Log::error("Salary payment failed for User #{$user->id}: " . $e->getMessage());
-                }
-            }
-        }
-
-        return response()->json([
-            'success'   => true,
-            'processed' => $processed,
-            'message'   => "Processed {$processed} salary payments.",
-        ]);
-    }
-
-    // ==========================================
-    // DASHBOARD - DOWNLINES TREE VIEW
-    // ==========================================
-
-    /**
-     * Display nested downline tree with recursive accordions
-     */
-    public function downlinesTree()
-    {
-        $userId = Session::get('app_user_id');
-
-        if (! $userId) {
-            return redirect()->route('userLogin.app')->with('error', 'Please login first');
-        }
-
-        // Get user details
-        $user = DB::table('app_users')->where('id', $userId)->first();
-
-        if (! $user) {
-            return redirect()->route('userLogin.app')->with('error', 'User not found');
-        }
-
-        // Get user's own business data
-        $userBusinessData = $this->getUserBusinessLevelData($userId);
-
-        // Generate nested accordion HTML
-        $nestedDownlines = $this->buildNestedAccordion($userId, $user->app_u_name, 1);
-
-        return view('userApp.userAppView.downlinesTree', compact(
-            'user',
-            'userBusinessData',
-            'nestedDownlines'
-        ));
-    }
-
-    /**
-     * Build nested accordion HTML recursively
-     *
-     * @param int $userId - Current user ID
-     * @param string $userName - User name for tree path
-     * @param int $depth - Current depth level
-     * @param string $parentPath - Tree path (e.g., "Pritam1 > B1 > H1")
-     * @return string HTML
-     */
-
-    private function buildNestedAccordion($userId, $userName, $depth = 1, $parentPath = '')
-    {
-        // Maximum depth to prevent infinite loops
-        if ($depth > 10) {
-            return '';
-        }
-
-        // Get direct downlines
-        $downlines = DB::table('app_users')
-            ->where('introducer_id', $userId)
-            ->get();
-
-        if ($downlines->isEmpty()) {
-            return '<div class="alert alert-secondary mb-2">No downlines</div>';
-        }
-
-        $html = '<div class="accordion nested-accordion" id="accordion_' . $userId . '_' . $depth . '">';
-
-        foreach ($downlines as $index => $member) {
-            $memberData = $this->getUserBusinessLevelData($member->id);
-
-            // Get count of all nested downlines
-            $totalDownlineCount = $this->getTotalDownlineCount($member->id);
-
-            // Build tree path
-            $currentPath = $parentPath ? $parentPath . ' > ' . $member->app_u_name : $member->app_u_name;
-
-            // Unique ID for accordion
-            $accordionId = 'collapse_' . $member->id . '_' . $depth;
-
-            $html .= '<div class="accordion-item mb-2 level-' . $depth . '">';
-
-            // Accordion Header
-            $html .= '<h2 class="accordion-header" id="heading_' . $member->id . '_' . $depth . '">';
-            $html .= '<button class="accordion-button collapsed" type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#' . $accordionId . '"
-                        aria-expanded="false"
-                        aria-controls="' . $accordionId . '">';
-
-            // Member count badge (top-left)
-            if ($totalDownlineCount > 0) {
-                $html .= '<span class="member-count-badge">👥 ' . $totalDownlineCount . '</span>';
-            }
-
-            $html .= '<span style="margin-left: 50px;">';
-            $html .= '👤 <strong>' . htmlspecialchars($member->app_u_name) . '</strong> ';
-            $html .= '[' . htmlspecialchars($member->phone_number) . '] ';
-            $html .= '| 🏆 Level ' . $memberData['qualified_level'] . ' ';
-            $html .= '| 💰 ₹' . number_format($memberData['total_business'], 0);
-            $html .= '</span>';
-
-            $html .= '</button>';
-            $html .= '</h2>';
-
-            // Accordion Body
-            $html .= '<div id="' . $accordionId . '"
-                        class="accordion-collapse collapse"
-                        aria-labelledby="heading_' . $member->id . '_' . $depth . '"
-                        data-bs-parent="#accordion_' . $userId . '_' . $depth . '">';
-
-            $html .= '<div class="accordion-body">';
-
-            // Tree Path
-            $html .= '<div class="tree-path">📍 Path: ' . htmlspecialchars($currentPath) . '</div>';
-
-            // User Details Card
-            $html .= $this->buildUserInfoCard($memberData);
-
-            // Recursive call for nested downlines
-            $nestedHtml = $this->buildNestedAccordion(
-                $member->id,
-                $member->app_u_name,
-                $depth + 1,
-                $currentPath
-            );
-
-            if (! empty($nestedHtml) && trim($nestedHtml) !== '<div class="alert alert-secondary mb-2">No downlines</div>') {
-                $html .= '<div class="mt-3">';
-                $html .= '<h6 class="text-primary">⬇️ Direct Downlines:</h6>';
-                $html .= $nestedHtml;
-                $html .= '</div>';
-            }
-
-            $html .= '</div>'; // accordion-body
-            $html .= '</div>'; // accordion-collapse
-            $html .= '</div>'; // accordion-item
-        }
-
-        $html .= '</div>'; // accordion
-
-        return $html;
-    }
-
-    /**
-     * Build user info card HTML
-     */
-    private function buildUserInfoCard($memberData)
-    {
-        $salaryEligible = $memberData['salary_eligible'] === 'Yes'
-            ? '<span class="badge bg-success">✅ Eligible</span>'
-            : '<span class="badge bg-secondary">❌ Not Eligible</span>';
-
-        // 40:60 status based on level
-        if ($memberData['qualified_level'] >= 4) {
-            $unlockStatus = $memberData['is_4060_compliant']
-                ? '<span class="badge bg-success">✅ Unlocked</span>'
-                : '<span class="badge bg-warning text-dark">🔒 Locked</span>';
-        } else {
-            $unlockStatus = '<span class="badge bg-secondary">N/A (Level ' . $memberData['qualified_level'] . ')</span>';
-        }
-
-        $html = '<div class="user-info-card">';
-        $html .= '<div class="row">';
-
-        // Left Column
-        $html .= '<div class="col-md-6">';
-        $html .= '<p class="mb-2"><strong>👤 Name:</strong> ' . htmlspecialchars($memberData['name']) . '</p>';
-        $html .= '<p class="mb-2">
-            <strong>📞 Phone:</strong>
-            <span class="text-primary openIncomeModal"
-                  data-user-name="' . htmlspecialchars($memberData['name']) . '"
-                  data-user-phone="' . htmlspecialchars($memberData['phone']) . '"
-                  data-user-id="' . $memberData['user_id'] . '"
-                  data-bs-toggle="modal"
-                  data-bs-target="#incomeDetailModal"
-                  style="cursor: pointer; text-decoration: underline;">
-                ' . htmlspecialchars($memberData['phone']) . '
-            </span>
-        </p>';
-        $html .= '<p class="mb-2"><strong>💼 Self Business:</strong> ₹' . number_format($memberData['self_business'], 2) . '</p>';
-        $html .= '<p class="mb-2"><strong>💰 Total Business:</strong> ₹' . number_format($memberData['total_business'], 2) . '</p>';
-        $html .= '<p class="mb-2"><strong>🏆 Qualified Level:</strong> <span class="badge bg-primary">Level ' . $memberData['qualified_level'] . '</span></p>';
-        $html .= '</div>';
-
-        // Right Column
-        $html .= '<div class="col-md-6">';
-        $html .= '<p class="mb-2"><strong>💵 Monthly Salary:</strong> ₹' . number_format($memberData['salary'], 2) . ' (' . $memberData['salary_months'] . ' Mo.)</p>';
-        $html .= '<p class="mb-2"><strong>📈 Next Level Need:</strong> ₹' . number_format($memberData['business_needed'], 2) . '</p>';
-        $html .= '<p class="mb-2"><strong>📊 Top Leg:</strong> ₹' . number_format($memberData['top_leg_business'], 2) . ' (' . $memberData['top_leg_percentage'] . '%)</p>';
-        $html .= '<p class="mb-2"><strong>🧾 Salary Eligible:</strong> ' . $salaryEligible . '</p>';
-        $html .= '<p class="mb-2"><strong>🔐 40:60 Status:</strong> ' . $unlockStatus . '</p>';
-        $html .= '</div>';
-
-        $html .= '</div>'; // row
-        $html .= '</div>'; // user-info-card
-
-        return $html;
-    }
-
-    /**
-     * Get total count of all nested downlines
-     */
-
-    private function getTotalDownlineCount($userId)
-    {
-        static $cache = [];
-
-        if (isset($cache[$userId])) {
-            return $cache[$userId];
-        }
-
-        $directCount = DB::table('app_users')
-            ->where('introducer_id', $userId)
-            ->count();
-
-        if ($directCount === 0) {
-            $cache[$userId] = 0;
-            return 0;
-        }
-
-        $total = $directCount;
-
-        $children = DB::table('app_users')
-            ->where('introducer_id', $userId)
-            ->pluck('id');
-
-        foreach ($children as $childId) {
-            $total += $this->getTotalDownlineCount($childId);
-        }
-
-        $cache[$userId] = $total;
-        return $total;
-    }
-
-    // ==========================================
-    // GET MEMBERS BY LEVEL
-    // ==========================================
-
-    private function getMembersByLevel($userId, $targetLevel)
-    {
-        if ($targetLevel < 1 || $targetLevel > 10) {
-            return [];
-        }
-
-        $currentLevelUsers = [$userId];
-
-        // Traverse down to target level
-        for ($level = 1; $level <= $targetLevel; $level++) {
-            if (empty($currentLevelUsers)) {
-                return [];
-            }
-
-            $nextLevelUsers = DB::table('app_users')
-                ->whereIn('introducer_id', $currentLevelUsers)
-                ->pluck('id')
-                ->toArray();
-
-            if ($level == $targetLevel) {
-                // Return detailed data for target level
-                $members = DB::table('app_users')
-                    ->whereIn('id', $nextLevelUsers)
-                    ->get();
-
-                $result = [];
-                foreach ($members as $member) {
-                    $result[] = $this->getUserBusinessLevelData($member->id);
-                }
-                return $result;
-            }
-
-            $currentLevelUsers = $nextLevelUsers;
-        }
-
-        return [];
-    }
-
-    // ==========================================
-    // GET USER BUSINESS & LEVEL DATA
-    // ==========================================
-
-    private function getUserBusinessLevelData($userId)
-    {
-        $user = DB::table('app_users')->where('id', $userId)->first();
-
-        if (! $user) {
-            return null;
-        }
-
-        // Calculate self business
-        $selfBusiness = (float) DB::table('user_package_purchases')
-            ->where('app_user_id', $userId)
-            ->sum('amount_paid');
-
-        // Calculate total business (recursive)
-        $totalBusiness = $this->calculateRecursiveBusiness($userId);
-
-        // Get qualified level from database
-        $qualifiedLevel = $this->getUserQualifiedLevel($userId);
-
-        // Level thresholds
-        $thresholds   = $this->getLevelThresholds();
-        $salaryConfig = $this->getLevelSalaryConfig();
-
-        // Calculate next level requirement
-        $nextLevel         = $qualifiedLevel + 1;
-        $nextLevelBusiness = ($nextLevel <= 10) ? $thresholds[$nextLevel] : null;
-        $businessNeeded    = $nextLevelBusiness ? max(0, $nextLevelBusiness - $totalBusiness) : 0;
-
-        // Get leg distribution
-        $legs             = $this->getDownlineBusinessForUser($userId);
-        $topLeg           = ! empty($legs) ? collect($legs)->max('total_business') : 0;
-        $topLegPercentage = $totalBusiness > 0 ? round(($topLeg / $totalBusiness) * 100, 2) : 0;
-
-        // 40:60 Rule ONLY applies from Level 4 onwards
-        if ($qualifiedLevel >= 4) {
-            $is4060Compliant = ($topLegPercentage <= 60);
-        } else {
-            // Level 1-3: Always compliant (rule doesn't apply)
-            $is4060Compliant = true;
-        }
-
-        // Salary information
-        $salaryInfo = null;
-        if ($user->user_salary) {
-            $salaryInfo = json_decode($user->user_salary, true);
-        }
-
-        $currentSalary  = 0;
-        $salaryMonths   = 0;
-        $salaryEligible = 'No';
-
-        if ($qualifiedLevel >= 4 && isset($salaryConfig[$qualifiedLevel])) {
-            [$amount, $months] = $salaryConfig[$qualifiedLevel];
-            $currentSalary     = $amount;
-            $salaryMonths      = $months;
-
-            if ($salaryInfo && isset($salaryInfo['status']) && $salaryInfo['status'] === 'active') {
-                $salaryEligible = 'Yes';
-            } else if ($salaryInfo) {
-                $salaryEligible = 'Completed';
-            } else {
-                $salaryEligible = 'Eligible';
-            }
-        }
-
-        // Determine ratio_status based on level and compliance
-        if ($qualifiedLevel >= 4) {
-            $ratioStatus = $is4060Compliant ? 'Unlocked' : 'Locked';
-        } else {
-            $ratioStatus = 'N/A'; // Not applicable for levels 1-3
-        }
-
-        // 🆕 Get monthly commission breakdown
-        $monthlyCommissions = $this->getMonthlyCommissionBreakdown($userId);
-
-        return [
-            'user_id'             => $user->id,
-            'name'                => $user->app_u_name,
-            'phone'               => $user->phone_number,
-            'self_business'       => $selfBusiness,
-            'total_business'      => $totalBusiness,
-            'qualified_level'     => $qualifiedLevel,
-            'next_level'          => $nextLevel <= 10 ? $nextLevel : null,
-            'business_needed'     => $businessNeeded,
-            'salary'              => $currentSalary,
-            'salary_months'       => $salaryMonths,
-            'salary_eligible'     => $salaryEligible,
-            'top_leg_business'    => $topLeg,
-            'top_leg_percentage'  => $topLegPercentage,
-            'is_4060_compliant'   => $is4060Compliant,
-            'ratio_status'        => $ratioStatus,
-            'salary_info'         => $salaryInfo,
-            'monthly_commissions' => $monthlyCommissions,
-        ];
-    }
-
-    /**
-     * Get monthly commission breakdown
-     */
-
-    private function getMonthlyCommissionBreakdown($userId)
-    {
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $endOfMonth   = Carbon::now()->endOfMonth();
-
-        // Get all transactions for this month
-        $transactions = DB::table('user_transactions')
-            ->where('app_user_id', $userId)
-            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-            ->where('status', 'Done')
-            ->get();
-
-        $levelPercents = $this->getLevelPercents();
-
-        // Initialize breakdown
-        $breakdown = [
-            'total_referral_income' => 0,
-            'total_salary'          => 0,
-            'level_wise'            => [],
-            'transaction_count'     => 0,
-        ];
-
-        // Initialize level-wise array
-        for ($i = 1; $i <= 10; $i++) {
-            $breakdown['level_wise'][$i] = [
-                'amount'     => 0,
-                'count'      => 0,
-                'percentage' => $levelPercents[$i] ?? 0,
-            ];
-        }
-
-        foreach ($transactions as $txn) {
-            $breakdown['transaction_count']++;
-
-            // Type 5 = Level Income
-            if ($txn->type_id == 5) {
-                $breakdown['total_referral_income'] += $txn->amount;
-
-                // Try to extract level from description
-                if (isset($txn->description) && preg_match('/Level (\d+)/', $txn->description, $matches)) {
-                    $level = (int) $matches[1];
-                    if ($level >= 1 && $level <= 10) {
-                        $breakdown['level_wise'][$level]['amount'] += $txn->amount;
-                        $breakdown['level_wise'][$level]['count']++;
-                    }
-                }
-            }
-
-            // Type 6 = Monthly Salary
-            if ($txn->type_id == 6) {
-                $breakdown['total_salary'] += $txn->amount;
-            }
-        }
-
-        $breakdown['total_monthly_earnings'] = $breakdown['total_referral_income'] + $breakdown['total_salary'];
-        $breakdown['month_name']             = Carbon::now()->format('F Y');
-
-        return $breakdown;
-    }
-
-    // ==========================================
-    // MLM REPORT (API/ADMIN VIEW)
-    // ==========================================
-
-    public function mlmReport(Request $request)
-    {
-        $users  = DB::table('app_users')->get();
-        $report = [];
-
-        foreach ($users as $user) {
-            $data     = $this->getUserBusinessLevelData($user->id);
-            $report[] = $data;
-        }
-
-        // Sort by total business
-        usort($report, function ($a, $b) {
-            return $b['total_business'] <=> $a['total_business'];
-        });
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success' => true,
-                'data'    => $report,
-            ]);
-        }
-
-        return view('admin.mlm-report', compact('report'));
-    }
-
-    /**
-     * Get user income transaction details (for modal)
-     */
-
-    /**
-     * Get user income transaction details (for modal)
-     */
-
-    public function getUserIncomeDetails($userId)
-    {
-        try {
-            $user = DB::table('app_users')->where('id', $userId)->first();
-
-            if (! $user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found',
-                ], 404);
-            }
-
-            // Get recent transactions
-            $transactions = DB::table('user_transactions')
-                ->where('app_user_id', $userId)
-                ->orderBy('created_at', 'desc')
-                ->limit(50)
-                ->get()
-                ->map(function ($txn) {
-                    $types = [
-                        1 => 'Pin Purchase',
-                        2 => 'Package Purchase',
-                        3 => 'Withdrawal',
-                        4 => 'Wallet Top-up',
-                        5 => 'Level Income',
-                        6 => 'Monthly Salary',
-                    ];
-
-                    return [
-                        'date'        => Carbon::parse($txn->created_at)->format('d M Y'),
-                        'type'        => $types[$txn->type_id] ?? 'Unknown',
-                        'amount'      => number_format($txn->amount, 2),
-                        'status'      => $txn->status,
-                        'description' => $txn->description ?? '',
-                    ];
-                });
-
-            // Get summary
-            $totalIncome = DB::table('user_transactions')
-                ->where('app_user_id', $userId)
-                ->where('type_id', 5) // Level income
-                ->sum('amount');
-
-            $totalSalary = DB::table('user_transactions')
-                ->where('app_user_id', $userId)
-                ->where('type_id', 6) // Salary
-                ->sum('amount');
-
-            $totalPackagePurchase = DB::table('user_package_purchases')
-                ->where('app_user_id', $userId)
-                ->sum('amount_paid');
-
-            return response()->json([
-                'success'      => true,
-                'user'         => [
-                    'name'  => $user->app_u_name,
-                    'phone' => $user->phone_number,
-                ],
-                'summary'      => [
-                    'total_income'           => number_format($totalIncome, 2),
-                    'total_salary'           => number_format($totalSalary, 2),
-                    'total_package_purchase' => number_format($totalPackagePurchase, 2),
-                    'current_wallet'         => number_format($user->referral_income, 2),
-                ],
-                'transactions' => $transactions,
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('getUserIncomeDetails error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch income details',
-            ], 500);
-        }
-    }
-
-    public function processPendingSalaries($singleUserId = null)
-    {
-        DB::beginTransaction();
-        try {
-            $query = DB::table('app_users')->whereNotNull('user_salary');
-
-            if ($singleUserId) {
-                $query->where('id', $singleUserId);
-            }
-
-            $users = $query->get();
-
-            foreach ($users as $u) {
-                $salaryData = json_decode($u->user_salary, true);
-                if (! $salaryData) {
-                    continue;
-                }
-
-                $monthsPaid  = (int) ($salaryData['months_paid'] ?? 0);
-                $monthsTotal = (int) ($salaryData['months_total'] ?? 0);
-                $nextPay     = isset($salaryData['next_payment_date'])
-                    ? \Carbon\Carbon::parse($salaryData['next_payment_date'])
-                    : null;
-
-                if ($monthsPaid >= $monthsTotal) {
-                    continue;
-                }
-
-                if ($nextPay && $nextPay->isFuture()) {
-                    continue;
-                }
-
-                $amount = (float) ($salaryData['salary_amount'] ?? 0);
-                if ($amount <= 0) {
-                    continue;
-                }
-
-                $current      = DB::table('app_users')->where('id', $u->id)->lockForUpdate()->first();
-                $walletBefore = (float) $current->total_withdrawal_req;
-
-                DB::table('app_users')->where('id', $u->id)->update([
-                    'total_withdrawal_req' => DB::raw("total_withdrawal_req + {$amount}"),
-                    'life_time_eran' => DB::raw("life_time_eran + {$amount}"),
-                    'updated_at' => now(),
-                ]);
-
-                $walletAfter = (float) DB::table('app_users')->where('id', $u->id)->value('total_withdrawal_req');
-
-                DB::table('user_transactions')->insert([
-                    'app_user_id'   => $u->id,
-                    'type_id'       => 6,
-                    'amount'        => $amount,
-                    'wallet_before' => $walletBefore,
-                    'wallet_after'  => $walletAfter,
-                    'status'        => 'Done',
-                    'requested_at'  => now(),
-                    'done_at'       => now(),
-                    'created_at'    => now(),
-                    'updated_at'    => now(),
-                ]);
-
-                $salaryData['months_paid'] = $monthsPaid + 1;
-                if ($salaryData['months_paid'] >= $monthsTotal) {
-                    $salaryData['next_payment_date'] = null;
-                } else {
-                    $next                            = ($nextPay ?: now())->addMonth();
-                    $salaryData['next_payment_date'] = $next->toDateString();
-                }
-
-                DB::table('app_users')->where('id', $u->id)->update([
-                    'user_salary' => json_encode($salaryData),
-                    'updated_at'  => now(),
-                ]);
-            }
-
-            DB::commit();
-            return response()->json(['status' => 'success', 'message' => 'Salary processed successfully']);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
-        }
-    }
-
-    // ******************************************************
-    public function userAppDashboardUpdate()
-    {
-        $appPackages = DB::table('package_master')->get();
-        $app_banners = \DB::table('app_banners')->get();
-        $userId      = session('app_user_id');
-        $allPins     = $this->getAllPins();
-
-        $purchases = DB::table('user_package_purchases')
-            ->join('package_master', 'user_package_purchases.package_id', '=', 'package_master.id')
-            ->where('user_package_purchases.app_user_id', $userId)
-            ->where('user_package_purchases.is_credited', 0)
-            ->select(
-                'user_package_purchases.id as purchase_id',
-                'user_package_purchases.created_at',
-                'package_master.package_total_amount',
-                'package_master.package_time_duration'
-            )
-            ->get();
-
-        foreach ($purchases as $purchase) {
-            $perMinuteAmount = floatval($purchase->package_total_amount) / intval($purchase->package_time_duration);
-
-            // How many minutes have passed?
-            // $minutesPassed = \Carbon\Carbon::parse($purchase->created_at)->diffInMonths(now());
-            $minutesPassed = \Carbon\Carbon::parse($purchase->created_at)->diffInMinutes(now());
-
-            // does not exceed duration
-            $minutesPassed = min($minutesPassed, intval($purchase->package_time_duration));
-
-            // How many times has it already been credited?
-            $alreadyCreditedCount = DB::table('user_transactions')
-                ->where('app_user_id', $userId)
-                ->where('type_id', 3) // maturity
-                ->where('purchase_id', $purchase->purchase_id)
-                ->count();
-
-            // How many new installments will I have to pay?
-            $newCredits = $minutesPassed - $alreadyCreditedCount;
-
-            if ($newCredits > 0) {
-                DB::beginTransaction();
-                try {
-                    $user = DB::table('app_users')->where('id', $userId)->lockForUpdate()->first();
-
-                    $currentWallet       = floatval($user->total_withdrawal_req);
-                    $currentPackageTotal = floatval($user->total_pakeg_amount);
-
-                    for ($i = 0; $i < $newCredits; $i++) {
-                        $amountToCredit = $perMinuteAmount;
-
-                        $newWallet       = $currentWallet + $amountToCredit;
-                        $newPackageTotal = $currentPackageTotal - $amountToCredit;
-
-                        // 1. Update user wallet + package_total_amount থেকে মাইনাস
-                        DB::table('app_users')
-                            ->where('id', $userId)
-                            ->update([
-                                'total_withdrawal_req' => $newWallet,
-                                'total_pakeg_amount'   => $newPackageTotal,
-                            ]);
-
-                        // 2. Insert transaction log
-                        DB::table('user_transactions')->insert([
-                            'app_user_id'   => $userId,
-                            'purchase_id'   => $purchase->purchase_id,
-                            'type_id'       => 3, // maturity
-                            'amount'        => $amountToCredit,
-                            'wallet_before' => $currentWallet,
-                            'wallet_after'  => $newWallet,
-                            'status'        => 'Done',
-                            'requested_at'  => now(),
-                            'done_at'       => now(),
-                            'created_at'    => now(),
-                            'updated_at'    => now(),
-                        ]);
-
-                        // update current values for next loop
-                        $currentWallet       = $newWallet;
-                        $currentPackageTotal = $newPackageTotal;
-                    }
-
-                    // যদি সব মিনিট শেষ হয়ে যায় → purchase complete
-                    if ($minutesPassed >= intval($purchase->package_time_duration)) {
-                        DB::table('user_package_purchases')
-                            ->where('id', $purchase->purchase_id)
-                            ->update(['is_credited' => 1, 'updated_at' => now()]);
-                    }
-
-                    DB::commit();
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    // Log error if needed
-                }
-            }
-        }
-
-        $hasBoughtPackage1 = DB::table('user_package_purchases')
-            ->where('app_user_id', $userId)
-            ->where('package_id', 1)
-            ->exists();
-
-        $packageAmount = DB::table('user_package_purchases')
-            ->where('app_user_id', $userId)
-            ->get();
-
-        // Refresh wallet in session
-        $userWallet = DB::table('app_users')->where('id', $userId)->value('user_wallet');
-
-        Session::put('app_user_wallet', $userWallet);
-
-        return view('userApp.userAppView.dashboard', compact('userWallet', 'appPackages', 'hasBoughtPackage1', 'allPins', 'packageAmount', 'app_banners'));
-    }
-
-// ************************************************************
-
-// myPackagesList => when user do any then it will show url- my-packages-list
-
-    public function myPackagesList()
-    {
-        $userId = session('app_user_id');
-
-        $transactions = DB::table('user_transactions')
-            ->where('app_user_id', $userId)
-            ->whereIn('type_id', [2, 3]) // Buy or Maturity
-            ->orderByDesc('id')
-            ->get();
-
-        $packageData = DB::table('user_package_purchases as upp')
-            ->join('package_master as pm', 'upp.package_id', '=', 'pm.id')
-            ->where('upp.app_user_id', $userId)
-            ->select(
-                'upp.id as purchase_id',
-                'upp.amount_paid',
-                'upp.created_at as purchase_created_at',
-                'upp.is_credited',
-                'pm.package_name',
-                'pm.package_amount',
-                'pm.package_total_amount',
-                'pm.package_time_duration',
-                'pm.package_payout_per'
-            )
-            ->get();
-
-        $combined = $transactions->map(function ($txn) use ($packageData) {
-            $match = null;
-
-            if ($txn->type_id == 2) { // Buy
-                $match = $packageData->first(function ($pkg) use ($txn) {
-                    return (float) $pkg->amount_paid === (float) $txn->amount &&
-                    \Carbon\Carbon::parse($pkg->purchase_created_at)->format('Y-m-d H:i') ===
-                    \Carbon\Carbon::parse($txn->requested_at)->format('Y-m-d H:i');
-                });
-            }
-
-            if ($txn->type_id == 3) { // Maturity
-                $match = $packageData->first(function ($pkg) use ($txn) {
-                    return $pkg->is_credited == 1 &&
-                    (float) $pkg->package_total_amount === (float) $txn->amount;
-                });
-            }
-
-            return (object) [
-                'type_id'               => $txn->type_id,
-                'type_name'             => $txn->type_id == 2 ? 'Package Buy' : 'Maturity',
-                'status'                => $txn->status,
-                'amount'                => $txn->amount,
-                'wallet_before'         => $txn->wallet_before,
-                'wallet_after'          => $txn->wallet_after,
-                'requested_at'          => $txn->requested_at,
-                'done_at'               => $txn->done_at,
-                'package_name'          => $match->package_name ?? 'N/A',
-                'package_amount'        => $match->package_amount ?? null,
-                'package_total_amount'  => $match->package_total_amount ?? null,
-                'package_time_duration' => $match->package_time_duration ?? null,
-                'package_payout_per'    => $match->package_payout_per ?? null,
-                'is_credited'           => $match->is_credited ?? null,
-            ];
-        });
-
-        return view('userApp.userAppView.myPackagesList', [
-            'appPackages' => $combined,
-        ]);
-    }
-
-    public function transferPins(Request $request)
-    {
-        $request->validate([
-            'userId'       => 'required|integer',
-            'to_phone'     => 'required',
-            'withdraw_req' => 'required|integer|min:1',
-        ]);
-
-        $senderId      = $request->userId;
-        $receiverPhone = $request->to_phone;
-        $pinCount      = intval($request->withdraw_req);
-
-        // ✅ Receiver user info
-        $receiver = DB::table('app_users')->where('phone_number', $receiverPhone)->first();
-        if (! $receiver) {
-            return back()->with('error', 'Receiver not found!');
-        }
-
-        // ✅ Sender pins record
-        $senderReq = DB::table('user_balance_request')->where('app_user_id', $senderId)->first();
-        if (! $senderReq) {
-            return back()->with('error', 'Sender does not have any PIN records!');
-        }
-
-        $pins = json_decode($senderReq->pin_json, true) ?? [];
-
-        // ✅ Inactive pins filter (status = 1 means unused)
-        $inactivePins = array_values(array_filter($pins, fn($p) => $p['status'] == 1));
-
-        if (count($inactivePins) < $pinCount) {
-            return back()->with('error', 'Not enough inactive pins!');
-        }
-
-        // ✅ Pick pins to transfer
-        $transferPins = array_slice($inactivePins, 0, $pinCount);
-
-        // ✅ Remove transferred pins from sender (pin দিয়ে match করা হচ্ছে)
-        $remainingPins    = [];
-        $transferPinsKeys = array_map(fn($p) => $p['pin'], $transferPins);
-
-        foreach ($pins as $p) {
-            if (! in_array($p['pin'], $transferPinsKeys)) {
-                $remainingPins[] = $p;
-            }
-        }
-
-        DB::table('user_balance_request')->where('app_user_id', $senderId)
-            ->update(['pin_json' => json_encode($remainingPins), 'updated_at' => now()]);
-
-        // ✅ Receiver record check
-        $receiverReq = DB::table('user_balance_request')->where('app_user_id', $receiver->id)->first();
-
-        if (! $receiverReq) {
-            DB::table('user_balance_request')->insert([
-                'app_user_id'   => $receiver->id,
-                'app_user_name' => $receiver->app_u_name,
-                'user_phone'    => $receiver->phone_number,
-                'pin_json'      => '[]',
-                'status'        => 1,
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
-            $receiverReq = DB::table('user_balance_request')->where('app_user_id', $receiver->id)->first();
-        }
-
-        // ✅ Receiver pins update
-        $receiverPins = json_decode($receiverReq->pin_json, true) ?? [];
-        foreach ($transferPins as &$p) {
-            $p['app_user']   = $receiver->id;
-            $p['updated_at'] = now();
-        }
-        $receiverPins = array_merge($receiverPins, $transferPins);
-
-        DB::table('user_balance_request')->where('app_user_id', $receiver->id)
-            ->update(['pin_json' => json_encode($receiverPins), 'updated_at' => now()]);
-
-        // ✅ Transaction log
-        DB::table('user_transactions')->insert([
-            'app_user_id' => $senderId,
-            'type_id'     => 5, // ধরি 5 হবে 'PIN_TRANSFER'
-            'amount'      => $pinCount,
-            'remarks'     => 'Transferred to ' . $receiver->phone_number,
-            'created_at'  => now(),
-            'updated_at'  => now(),
-        ]);
-
-        return back()->with('success', "$pinCount PIN(s) transferred successfully to {$receiver->phone_number}!");
-    }
-
-// User App All Cntoler End *************************
-
-    public function toggleUserStatus($userId)
-    {
-        $user = DB::table('app_users')->where('id', $userId)->first();
-
-        if (! $user) {
-            return back()->with('error', 'User not found.');
-        }
-
-        $newStatus = $user->status == 1 ? 0 : 1;
-
-        DB::table('app_users')
-            ->where('id', $userId)
-            ->update(['status' => $newStatus]);
-
-        $message = $newStatus == 1 ? 'User activated successfully.' : 'User deactivated successfully.';
-
-        return redirect()->back()->with('success', $message);
-    }
-
 // ****************************************Dashbord
 
     public function index()
     {
-        $stats = $this->getUltimateDashboardStats();
+        $stats = true;
 
         return view('admin.logicApp.dashboard', compact('stats'));
     }
 
     public function uIndex()
     {
-        $stats = $this->getUltimateDashboardStats();
+        $stats = true;
 
         return view('admin.users.uDashboard', compact('stats'));
-    }
-
-    private function getUltimateDashboardStats()
-    {
-        $today        = Carbon::now();
-        $startOfMonth = $today->copy()->startOfMonth();
-        $startOfYear  = $today->copy()->startOfYear();
-
-        // ===== CORE METRICS =====
-
-        // Total Users & Growth
-        $totalUsers    = DB::table('app_users')->count();
-        $activeUsers   = DB::table('app_users')->where('status', 1)->count();
-        $inactiveUsers = $totalUsers - $activeUsers;
-        $todayNewUsers = DB::table('app_users')->whereDate('created_at', $today)->count();
-        $monthNewUsers = DB::table('app_users')->where('created_at', '>=', $startOfMonth)->count();
-        $yearNewUsers  = DB::table('app_users')->where('created_at', '>=', $startOfYear)->count();
-
-        // Business Metrics
-        $totalBusiness = DB::table('user_package_purchases')->sum('amount_paid');
-        $todayBusiness = DB::table('user_package_purchases')->whereDate('created_at', $today)->sum('amount_paid');
-        $monthBusiness = DB::table('user_package_purchases')->where('created_at', '>=', $startOfMonth)->sum('amount_paid');
-        $yearBusiness  = DB::table('user_package_purchases')->where('created_at', '>=', $startOfYear)->sum('amount_paid');
-
-        // Average ticket size
-        $avgPackageValue = DB::table('user_package_purchases')->avg('amount_paid');
-        $totalPackages   = DB::table('user_package_purchases')->count();
-
-        // ===== WALLET & BALANCE ANALYTICS =====
-
-        $totalWalletBalance    = DB::table('app_users')->sum('user_wallet');
-        $totalPinBalance       = DB::table('app_users')->sum('pin_active_bal');
-        $totalReferralIncome   = DB::table('app_users')->sum('referral_income');
-        $totalLifetimeEarnings = DB::table('app_users')->sum('life_time_eran');
-
-        // ===== WITHDRAWAL & REQUESTS =====
-
-        $pendingWithdrawals = DB::table('user_withdraw_request')
-            ->where('status', 2)
-            ->sum('req_bal_amount');
-        $pendingWithdrawalCount = DB::table('user_withdraw_request')->where('status', 2)->count();
-
-        $approvedWithdrawals = DB::table('user_withdraw_request')
-            ->where('status', 1)
-            ->sum('req_bal_amount');
-        $approvedWithdrawalCount = DB::table('user_withdraw_request')->where('status', 1)->count();
-
-        $rejectedWithdrawals = DB::table('user_withdraw_request')
-            ->where('status', 0)
-            ->sum('req_bal_amount');
-        $rejectedWithdrawalCount = DB::table('user_withdraw_request')->where('status', 0)->count();
-
-        // Total withdrawal requests
-        $totalWithdrawalRequests = $pendingWithdrawalCount + $approvedWithdrawalCount + $rejectedWithdrawalCount;
-
-        // ===== PIN & BALANCE REQUESTS =====
-
-        $pendingBalanceRequests = DB::table('user_balance_request')
-            ->where('status', 2)
-            ->count();
-        $totalPinsRequested = DB::table('user_balance_request')->sum('add_pin_bal');
-
-        $approvedBalanceRequests = DB::table('user_balance_request')
-            ->where('status', 1)
-            ->count();
-
-        // ===== TRANSACTION ANALYTICS =====
-
-        // By Type
-        $transactionsByType = DB::table('user_transactions')
-            ->select('type_id', DB::raw('COUNT(*) as count'), DB::raw('SUM(amount) as total'))
-            ->groupBy('type_id')
-            ->get()
-            ->keyBy('type_id');
-
-        $addBalanceTotal  = $transactionsByType->get(1)->total ?? 0;
-        $packageBuyTotal  = $transactionsByType->get(2)->total ?? 0;
-        $maturityTotal    = $transactionsByType->get(3)->total ?? 0;
-        $withdrawalTotal  = $transactionsByType->get(4)->total ?? 0;
-        $levelIncomeTotal = $transactionsByType->get(5)->total ?? 0;
-        $salaryTotal      = $transactionsByType->get(6)->total ?? 0;
-
-        // Pending vs Done
-        $pendingTransactions = DB::table('user_transactions')
-            ->where('status', 'Pending')
-            ->count();
-        $doneTransactions = DB::table('user_transactions')
-            ->where('status', 'Done')
-            ->count();
-
-        // This Month Payouts
-        $monthPayouts = DB::table('user_transactions')
-            ->where('created_at', '>=', $startOfMonth)
-            ->where('status', 'Done')
-            ->whereIn('type_id', [5, 6]) // Level income + Salary
-            ->sum('amount');
-
-        // ===== PACKAGE ANALYTICS =====
-
-        $packageStats = DB::table('package_master')
-            ->leftJoin('user_package_purchases', 'package_master.id', '=', 'user_package_purchases.package_id')
-            ->select(
-                'package_master.id',
-                'package_master.package_name',
-                'package_master.package_amount',
-                DB::raw('COUNT(user_package_purchases.id) as purchase_count'),
-                DB::raw('SUM(user_package_purchases.amount_paid) as total_revenue')
-            )
-            ->groupBy('package_master.id', 'package_master.package_name', 'package_master.package_amount')
-            ->orderBy('purchase_count', 'desc')
-            ->get();
-
-        $mostPopularPackage = $packageStats->first();
-
-        // ===== LEVEL DISTRIBUTION =====
-
-        $levelDistribution = [];
-        for ($i = 0; $i <= 10; $i++) {
-            $count = DB::table('user_level_status')
-                ->where('level_no', $i)
-                ->where('status', 1)
-                ->distinct('app_user_id')
-                ->count('app_user_id');
-            $levelDistribution[$i] = $count;
-        }
-
-        // Level 4+ users (eligible for salary)
-        $salaryEligibleUsers = array_sum(array_slice($levelDistribution, 4));
-
-        // ===== COMPLIANCE & VIOLATIONS =====
-
-        $level4PlusUsers = DB::table('user_level_status')
-            ->where('level_no', '>=', 4)
-            ->where('status', 1)
-            ->distinct('app_user_id')
-            ->pluck('app_user_id');
-
-        $compliantUsers = 0;
-        $violationUsers = [];
-
-        foreach ($level4PlusUsers as $userId) {
-            $userData = $this->quickComplianceCheck($userId);
-            if ($userData['is_4060_compliant']) {
-                $compliantUsers++;
-            } else {
-                $violationUsers[] = $userData;
-            }
-        }
-
-        $complianceRate = count($level4PlusUsers) > 0 ? ($compliantUsers / count($level4PlusUsers)) * 100 : 100;
-
-        // ===== TOP PERFORMERS =====
-
-        // Top 10 by business
-        $topByBusiness = $this->getTopPerformers('business', 10);
-
-        // Top 10 by referral income
-        $topByIncome = DB::table('app_users')
-            ->select('id', 'app_u_name', 'phone_number', 'referral_income')
-            ->orderBy('referral_income', 'desc')
-            ->limit(10)
-            ->get();
-
-        // Top 10 by team size
-        $topByTeamSize = $this->getTopByTeamSize(10);
-
-        // ===== RECENT ACTIVITIES (DETAILED) =====
-
-        $recentActivities = DB::table('user_transactions')
-            ->join('app_users', 'user_transactions.app_user_id', '=', 'app_users.id')
-            ->select(
-                'user_transactions.*',
-                'app_users.app_u_name',
-                'app_users.phone_number'
-            )
-            ->orderBy('user_transactions.created_at', 'desc')
-            ->limit(20)
-            ->get();
-
-        // ===== HOURLY ACTIVITY (TODAY) =====
-
-        $hourlyActivity = [];
-        for ($hour = 0; $hour < 24; $hour++) {
-            $hourlyActivity[$hour] = DB::table('user_transactions')
-                ->whereDate('created_at', $today)
-                ->whereRaw('HOUR(created_at) = ?', [$hour])
-                ->count();
-        }
-
-        // ===== DAILY STATS (LAST 30 DAYS) =====
-
-        $dailyStats = [];
-        for ($i = 29; $i >= 0; $i--) {
-            $date         = $today->copy()->subDays($i);
-            $dailyStats[] = [
-                'date'         => $date->format('M d'),
-                'users'        => DB::table('app_users')->whereDate('created_at', $date)->count(),
-                'packages'     => DB::table('user_package_purchases')->whereDate('created_at', $date)->count(),
-                'business'     => DB::table('user_package_purchases')->whereDate('created_at', $date)->sum('amount_paid'),
-                'transactions' => DB::table('user_transactions')->whereDate('created_at', $date)->count(),
-            ];
-        }
-
-        // ===== MONTHLY COMPARISON (LAST 12 MONTHS) =====
-
-        $monthlyComparison = [];
-        for ($i = 11; $i >= 0; $i--) {
-            $month      = $today->copy()->subMonths($i);
-            $monthStart = $month->copy()->startOfMonth();
-            $monthEnd   = $month->copy()->endOfMonth();
-
-            $monthlyComparison[] = [
-                'month'    => $month->format('M Y'),
-                'users'    => DB::table('app_users')->whereBetween('created_at', [$monthStart, $monthEnd])->count(),
-                'business' => DB::table('user_package_purchases')->whereBetween('created_at', [$monthStart, $monthEnd])->sum('amount_paid'),
-                'payouts'  => DB::table('user_transactions')
-                    ->whereBetween('created_at', [$monthStart, $monthEnd])
-                    ->where('status', 'Done')
-                    ->whereIn('type_id', [5, 6])
-                    ->sum('amount'),
-            ];
-        }
-
-        // ===== SYSTEM HEALTH INDICATORS =====
-
-        $systemHealth = [
-            'withdrawal_processing_time' => $this->getAvgWithdrawalTime(),
-            'user_satisfaction_score'    => $this->calculateSatisfactionScore(),
-            'network_growth_rate'        => $this->calculateGrowthRate(),
-            'revenue_per_user'           => $totalUsers > 0 ? $totalBusiness / $totalUsers : 0,
-        ];
-
-        // ===== ALERTS & WARNINGS =====
-
-        $alerts = $this->generateSystemAlerts([
-            'pending_withdrawals'      => $pendingWithdrawalCount,
-            'pending_balance_requests' => $pendingBalanceRequests,
-            'compliance_rate'          => $complianceRate,
-            'violation_users'          => count($violationUsers),
-            'inactive_users'           => $inactiveUsers,
-        ]);
-
-        // ===== FINANCIAL SUMMARY =====
-
-        $financialSummary = [
-            'total_inflow'  => $totalBusiness,
-            'total_outflow' => $approvedWithdrawals + $monthPayouts,
-            'net_profit'    => $totalBusiness - ($approvedWithdrawals + $monthPayouts),
-            'profit_margin' => $totalBusiness > 0 ? (($totalBusiness - ($approvedWithdrawals + $monthPayouts)) / $totalBusiness) * 100 : 0,
-        ];
-
-        // ===== RETURN FULL STATS ARRAY =====
-
-        return [
-            // Core Metrics
-            'total_users'               => $totalUsers,
-            'active_users'              => $activeUsers,
-            'inactive_users'            => $inactiveUsers,
-            'today_new_users'           => $todayNewUsers,
-            'month_new_users'           => $monthNewUsers,
-            'year_new_users'            => $yearNewUsers,
-
-            // Business Metrics
-            'total_business'            => $totalBusiness,
-            'today_business'            => $todayBusiness,
-            'month_business'            => $monthBusiness,
-            'year_business'             => $yearBusiness,
-            'avg_package_value'         => $avgPackageValue,
-            'total_packages'            => $totalPackages,
-
-            // Wallet & Balance
-            'total_wallet_balance'      => $totalWalletBalance,
-            'total_pin_balance'         => $totalPinBalance,
-            'total_referral_income'     => $totalReferralIncome,
-            'total_lifetime_earnings'   => $totalLifetimeEarnings,
-
-            // Withdrawals
-            'pending_withdrawals'       => $pendingWithdrawals,
-            'pending_withdrawal_count'  => $pendingWithdrawalCount,
-            'approved_withdrawals'      => $approvedWithdrawals,
-            'approved_withdrawal_count' => $approvedWithdrawalCount,
-            'rejected_withdrawals'      => $rejectedWithdrawals,
-            'rejected_withdrawal_count' => $rejectedWithdrawalCount,
-            'total_withdrawal_requests' => $totalWithdrawalRequests,
-
-            // Balance Requests
-            'pending_balance_requests'  => $pendingBalanceRequests,
-            'approved_balance_requests' => $approvedBalanceRequests,
-            'total_pins_requested'      => $totalPinsRequested,
-
-            // Transactions
-            'add_balance_total'         => $addBalanceTotal,
-            'package_buy_total'         => $packageBuyTotal,
-            'maturity_total'            => $maturityTotal,
-            'withdrawal_total'          => $withdrawalTotal,
-            'level_income_total'        => $levelIncomeTotal,
-            'salary_total'              => $salaryTotal,
-            'pending_transactions'      => $pendingTransactions,
-            'done_transactions'         => $doneTransactions,
-            'month_payouts'             => $monthPayouts,
-
-            // Packages
-            'package_stats'             => $packageStats,
-            'most_popular_package'      => $mostPopularPackage,
-
-            // Levels
-            'level_distribution'        => $levelDistribution,
-            'salary_eligible_users'     => $salaryEligibleUsers,
-
-            // Compliance
-            'compliance_rate'           => $complianceRate,
-            'compliant_users'           => $compliantUsers,
-            'violation_users'           => $violationUsers,
-
-            // Top Performers
-            'top_by_business'           => $topByBusiness,
-            'top_by_income'             => $topByIncome,
-            'top_by_team_size'          => $topByTeamSize,
-
-            // Activity
-            'recent_activities'         => $recentActivities,
-            'hourly_activity'           => $hourlyActivity,
-
-            // Charts Data
-            'daily_stats'               => $dailyStats,
-            'monthly_comparison'        => $monthlyComparison,
-
-            // System Health
-            'system_health'             => $systemHealth,
-
-            // Alerts
-            'alerts'                    => $alerts,
-
-            // Financial Summary
-            'financial_summary'         => $financialSummary,
-        ];
-    }
-
-    // Helper Methods
-
-    private function quickComplianceCheck($userId)
-    {
-        $legs             = $this->getDownlineBusinessForUser($userId);
-        $totalBusiness    = collect($legs)->sum('total_business');
-        $topLeg           = collect($legs)->max('total_business') ?? 0;
-        $topLegPercentage = $totalBusiness > 0 ? ($topLeg / $totalBusiness) * 100 : 0;
-
-        $qualifiedLevel = DB::table('user_level_status')
-            ->where('app_user_id', $userId)
-            ->where('status', 1)
-            ->max('level_no') ?? 0;
-
-        return [
-            'user_id'            => $userId,
-            'qualified_level'    => $qualifiedLevel,
-            'is_4060_compliant'  => $topLegPercentage <= 60,
-            'top_leg_percentage' => round($topLegPercentage, 2),
-        ];
-    }
-
-    private function getTopPerformers($by = 'business', $limit = 10)
-    {
-        $users = DB::table('app_users')->select('id', 'app_u_name', 'phone_number')->get();
-
-        $ranked = $users->map(function ($user) {
-            return [
-                'id'        => $user->id,
-                'name'      => $user->app_u_name,
-                'phone'     => $user->phone_number,
-                'business'  => $this->calculateRecursiveBusiness($user->id),
-                'team_size' => $this->getTotalDownlineCount($user->id),
-            ];
-        })->sortByDesc('business')->take($limit)->values();
-
-        return $ranked;
-    }
-
-    private function getTopByTeamSize($limit = 10)
-    {
-        $users = DB::table('app_users')->select('id', 'app_u_name', 'phone_number')->get();
-
-        return $users->map(function ($user) {
-            return [
-                'id'        => $user->id,
-                'name'      => $user->app_u_name,
-                'phone'     => $user->phone_number,
-                'team_size' => $this->getTotalDownlineCount($user->id),
-            ];
-        })->sortByDesc('team_size')->take($limit)->values();
-    }
-
-    private function getAvgWithdrawalTime()
-    {
-        $avg = DB::table('user_withdraw_request')
-            ->where('status', 1)
-            ->whereNotNull('updated_at')
-            ->select(DB::raw('AVG(TIMESTAMPDIFF(HOUR, created_at, updated_at)) as avg_hours'))
-            ->first();
-
-        return round($avg->avg_hours ?? 0, 1);
-    }
-
-    private function calculateSatisfactionScore()
-    {
-        $approved = DB::table('user_withdraw_request')->where('status', 1)->count();
-        $total    = DB::table('user_withdraw_request')->count();
-
-        return $total > 0 ? round(($approved / $total) * 100, 1) : 0;
-    }
-
-    private function calculateGrowthRate()
-    {
-        $thisMonth = DB::table('app_users')->where('created_at', '>=', Carbon::now()->startOfMonth())->count();
-        $lastMonth = DB::table('app_users')
-            ->whereBetween('created_at', [
-                Carbon::now()->subMonth()->startOfMonth(),
-                Carbon::now()->subMonth()->endOfMonth(),
-            ])
-            ->count();
-
-        return $lastMonth > 0 ? round((($thisMonth - $lastMonth) / $lastMonth) * 100, 1) : 0;
-    }
-
-    private function generateSystemAlerts($data)
-    {
-        $alerts = [];
-
-        if ($data['pending_withdrawals'] > 10) {
-            $alerts[] = [
-                'type'    => 'danger',
-                'icon'    => 'exclamation-triangle',
-                'title'   => 'High Pending Withdrawals',
-                'message' => "{$data['pending_withdrawals']} withdrawal requests are pending. Please review immediately!",
-                'action' => route('admin.withdrawals.pending'),
-            ];
-        }
-
-        if ($data['pending_balance_requests'] > 5) {
-            $alerts[] = [
-                'type'    => 'warning',
-                'icon'    => 'clock',
-                'title'   => 'Balance Requests Pending',
-                'message' => "{$data['pending_balance_requests']} balance requests need approval.",
-                'action' => route('admin.balance.requests'),
-            ];
-        }
-
-        if ($data['compliance_rate'] < 60) {
-            $alerts[] = [
-                'type'    => 'danger',
-                'icon'    => 'shield-alt',
-                'title'   => 'Low Compliance Rate',
-                'message' => "Only {$data['compliance_rate']}% of Level 4+ users are compliant. {$data['violation_users']} users in violation!",
-                'action' => route('admin.compliance.report'),
-            ];
-        }
-
-        if ($data['inactive_users'] > ($data['inactive_users'] + 100) * 0.3) {
-            $alerts[] = [
-                'type'    => 'info',
-                'icon'    => 'user-slash',
-                'title'   => 'High Inactive Users',
-                'message' => "{$data['inactive_users']} users are inactive. Consider re-engagement campaign.",
-                'action' => route('admin.users.inactive'),
-            ];
-        }
-
-        return $alerts;
     }
 
     // ===========================
@@ -3838,9 +215,19 @@ END downlinesTree**************************************************
 
     public function businessPlanAdd()
     {
-        $userId     = Session::get('app_user_id');
-        $appUser    = DB::table('app_users')->where('id', $userId)->first();
-        $categories = DB::table('business_category')->get();
+        $userId  = Session::get('app_user_id');
+        $appUser = DB::table('app_users')->where('id', $userId)->first();
+
+        // Get categories already used by this user
+        $usedCategoryIds = DB::table('business_plans')
+            ->where('user_by', $userId)
+            ->pluck('business_category_id')
+            ->toArray();
+
+        // Get categories EXCEPT the ones already used
+        $categories = DB::table('business_category')
+            ->whereNotIn('id', $usedCategoryIds)
+            ->get();
 
         return view('admin.users.businessPlanAdd', [
             'appUser'    => $appUser,
@@ -3856,11 +243,22 @@ END downlinesTree**************************************************
         $appUser  = DB::table('app_users')->where('id', $userId)->first();
         $category = DB::table('business_category')->where('id', $request->business_category_id)->first();
 
+        // Prevent inserting duplicate category for same user
+        $exists = DB::table('business_plans')
+            ->where('user_by', $userId)
+            ->where('business_category_id', $request->business_category_id)
+            ->exists();
+
+        if ($exists) {
+            return back()->with('error', 'This category is already added for this user.');
+        }
+
         DB::table('business_plans')->insert([
             'user_by'                => $userId,                           // FK to app_users.id, From Session::get(app_user_id)
             'add_user_name'          => $appUser->app_u_name ?? 'Unknown', // Fetched from app_users table
             'business_category_id'   => $category->id,                     // ID from business_category table
             'business_category_name' => $category->category_name,          // Name from business_category table
+            'off_day'                => $request->off_day,                 // Name from off_day
             'loan_amount'            => $request->loan_amount,             // Loan amount requested
             'extra_amount'           => $request->extra_amount,            // Any extra amount
             'number_of_days'         => $request->number_of_days,          // Number of days for loan
@@ -3878,7 +276,7 @@ END downlinesTree**************************************************
             'updated_at'             => now(),                             // Record updated at
         ]);
 
-        return redirect()->route('business.plan.view')->with('success', 'Business Plan Added Successfully!');
+        return redirect()->route('business.plan.add')->with('success', 'Business Plan Added Successfully!');
     }
 
     public function businessPlanEdit($id)
@@ -3909,9 +307,20 @@ END downlinesTree**************************************************
 
         $category = DB::table('business_category')->where('id', $request->business_category_id)->first();
 
+        // Prevent inserting duplicate category for same user
+        /*      $exists = DB::table('business_plans')
+            ->where('user_by',$id)
+            ->where('business_category_id', $request->business_category_id)
+            ->exists();
+
+        if ($exists) {
+            return back()->with('error', 'This category is already added for this user.');
+        } */
+
         DB::table('business_plans')->where('id', $id)->update([
-            'business_category_id'   => $category->id,                   // ID from business_category table
-            'business_category_name' => $category->category_name,        // Name from business_category table
+            'business_category_id'   => $category->id,            // ID from business_category table
+            'business_category_name' => $category->category_name, // Name from business_category table
+
             'loan_amount'            => $request->loan_amount,           // Loan amount requested
             'extra_amount'           => $request->extra_amount,          // Any extra amount
             'number_of_days'         => $request->number_of_days,        // Number of days for loan
@@ -3967,21 +376,370 @@ END downlinesTree**************************************************
     // === DAILY UPDATE ===
 // show blank form for creating
 
+    public function registerUserApp(Request $request)
+    {
+        // Validate input
+        $request->validate([
+            'MobailNumber' => 'required|string|max:20|unique:app_users,phone_number',
+        ]);
+
+        // File upload helper
+        $uploadFile = function ($request, $inputName, $folder, $prefix = '') {
+            if ($request->hasFile($inputName)) {
+                $file     = $request->file($inputName);
+                $filename = $request->phone_number . '_' . $prefix . '_' . $file->getClientOriginalName();
+                $file->move(public_path("uploads/$folder"), $filename);
+                return "uploads/$folder/" . $filename;
+            }
+            return null;
+        };
+
+        $profilePicPath = $uploadFile($request, 'profile_picture', 'qr_user', 'profile');
+        $qrCodePath     = $uploadFile($request, 'upi_qr_code', 'qr_user', 'qr');
+
+        DB::table('app_users')->insert([
+            'app_u_name'             => $request->CompanyName,       // Company Name
+            'cin_no'                 => $request->CompanyCIN,        // CIN Number
+            'pan_number'             => $request->pan_number,        // PAN
+            'phone_number'           => $request->MobailNumber,      // Mobile Number
+            'user_email'             => $request->user_email,        // Email
+            'app_u_address'          => $request->user_address,      // Address
+            'police_station'         => $request->PoliceStation,     // Police Station
+            'user_district'          => $request->user_district,     // District
+            'user_state'             => $request->user_state,        // State
+            'pin_code'               => $request->pin_code,          // Pin Code
+            'contact_person_no'      => $request->contact_person_no, // Contact Person
+
+                                                                 // Profile Picture
+            'user_pic_img'           => $profilePicPath ?? null, // Profile Picture Path
+
+            // 1st Bank Info
+            'bank_name'              => $request->bank_name,
+            'bank_account_no'        => $request->bank_account_no,
+            'ifsc_code'              => $request->ifsc_code,
+            'upi_id'                 => $request->upi_id,
+
+            // 2nd Bank Info
+            'second_bank_name'       => $request->second_bank_name,
+            'second_bank_account_no' => $request->second_bank_account_no,
+            'second_ifsc_code'       => $request->second_ifsc_code,
+            'second_upi_id'          => $request->second_upi_id,
+
+            'upi_qr_code'            => $qrCodePath ?? null, // QR Code
+            'password'               => Hash::make('0011'),  // Default Password
+            'status'                 => 1,
+            'created_at'             => now(),
+            'updated_at'             => now(),
+        ]);
+
+        return redirect()->route('user.company.add')->with('success', '<h3 style="color:#fff;"> Registered Successfully.<br> Login User Name = ' . $request->phone_number . '<br>Login Password Is = 0011</h3>');
+    }
+
+    public function companyUpdateUpdate(Request $request, $id)
+    {
+        // File upload helper
+        $uploadFile = function ($request, $inputName, $folder, $prefix = '') {
+            if ($request->hasFile($inputName)) {
+                $file = $request->file($inputName);
+
+                // Use mobile number safely
+                $mobile = $request->MobailNumber ?? 'user';
+
+                $filename = $mobile . '_' . $prefix . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $file->move(public_path("uploads/$folder"), $filename);
+
+                return "uploads/$folder/" . $filename;
+            }
+            return null;
+        };
+
+        // Uploads
+        $profilePicPath = $uploadFile($request, 'profile_picture', 'qr_user', 'profile');
+        $qrCodePath     = $uploadFile($request, 'upi_qr_code', 'qr_user', 'qr');
+
+        // Prepare update data
+        $updateData = [
+            'app_u_name'             => $request->CompanyName,
+            'cin_no'                 => $request->CompanyCIN,
+            'pan_number'             => $request->pan_number,
+            'phone_number'           => $request->MobailNumber,
+            'user_email'             => $request->user_email,
+            'app_u_address'          => $request->user_address,
+            'police_station'         => $request->PoliceStation,
+            'user_district'          => $request->user_district,
+            'user_state'             => $request->user_state,
+            'pin_code'               => $request->pin_code,
+            'contact_person_no'      => $request->contact_person_no,
+
+            // Bank Information
+            'bank_name'              => $request->bank_name,
+            'bank_account_no'        => $request->bank_account_no,
+            'ifsc_code'              => $request->ifsc_code,
+            'upi_id'                 => $request->upi_id,
+
+            // Second Bank Info
+            'second_bank_name'       => $request->second_bank_name,
+            'second_bank_account_no' => $request->second_bank_account_no,
+            'second_ifsc_code'       => $request->second_ifsc_code,
+            'second_upi_id'          => $request->second_upi_id,
+
+            'updated_at'             => now(),
+        ];
+
+        // Update profile picture only if uploaded
+        if ($profilePicPath) {
+            $updateData['user_pic_img'] = $profilePicPath;
+        }
+
+        // Update QR code only if uploaded
+        if ($qrCodePath) {
+            $updateData['upi_qr_code'] = $qrCodePath;
+        }
+
+        // Run Update
+        DB::table('app_users')->where('id', $id)->update($updateData);
+
+        return redirect()
+            ->route('user.company.view')
+            ->with('success', 'Updated successfully.');
+    }
+
+    public function appUsersAdminPanelList(Request $request)
+    {
+
+        $query = \DB::table('app_users')->where('id', '!=', 1);
+
+        if ($request->has('phone') && ! empty($request->phone)) {
+            $query->where('phone_number', $request->phone);
+        }
+
+        $appUsers = $query->orderBy('id', 'desc')->get();
+
+        return view('admin.logicApp.appUsers', compact('appUsers'));
+
+    }
+
+    public function addUserCompany()
+    {
+
+        return view('admin.logicApp.addAppUsers', [
+
+            'isEdit' => false,
+        ]);
+    }
+
+    public function editUserCompany($id)
+    {
+        $update = DB::table('app_users')->where('id', $id)->first();
+        $isEdit = true;
+
+        return view('admin.logicApp.addAppUsers', compact('update', 'isEdit'));
+    }
+
+
+       public function adminLoginAsUser($userId)
+    {
+        $user = DB::table('app_users')->where('id', $userId)->first();
+
+        if (! $user) {
+            return redirect()->back()->with('error', 'User not found.');
+        }
+
+        // Set session variables to simulate login
+        session([
+            'app_user_id'     => $user->id,
+            'app_user_name'   => $user->app_u_name,
+            'app_user_wallet' => $user->user_wallet,
+            'app_user_phone'  => $user->phone_number,
+        ]);
+
+        return redirect()->route('user.dashboard')->with('success', '🔑 You are now logged in as: ' . $user->app_u_name);
+    }
 // === DAILY UPDATE ===
+
+    public function storeWeeklyUpdate(Request $request)
+    {
+        $userId = session('app_user_id');
+        if (! $userId) {
+            abort(403, 'Unauthorized');
+        }
+
+        try {
+            DB::table('weekly_update')->insert([
+                'user_by'     => $userId,
+                'weekly_from' => $request->weekly_from,
+                'weekly_to'   => $request->weekly_to,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+
+            return redirect()->route('daily.update.add')->with('success', 'Weekly update saved successfully.');
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->errorInfo[1] == 1062) {
+                return redirect()->back()->with('error', "Duplicate weekly range: {$request->weekly_from} - {$request->weekly_to}");
+            }
+            return redirect()->back()->with('error', 'Database error.');
+        }
+    }
+
+    private function buildDailyUpdateData()
+    {
+        $userId = session('app_user_id');
+        if (! $userId) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Get all plans
+        $plans = DB::table('business_plans')
+            ->where('user_by', $userId)
+            ->select('id', 'business_category_id', 'business_category_name', 'off_day')
+            ->get();
+
+        /** ----------------------------
+         *  DAILY PLAN
+         *-----------------------------*/
+
+        $offDays      = [];
+        $hasDailyPlan = false;
+
+        $dailyPlan = $plans->firstWhere('business_category_name', 'Daily');
+
+        if ($dailyPlan) {
+            $hasDailyPlan = true;
+
+            if (! empty($dailyPlan->off_day)) {
+                $offDays = array_map('trim', explode(',', $dailyPlan->off_day));
+            }
+        }
+
+        /** ----------------------------
+         *  WEEKLY PLAN
+         *-----------------------------*/
+
+        $hasWeeklyPlan    = false;
+        $weeklyUpdates    = [];
+        $monthWeeklyDates = [];
+
+        $weeklyPlan = $plans->firstWhere('business_category_name', 'Weekly');
+
+        $currentMonth = now()->month;
+        $currentYear  = now()->year;
+
+        if ($weeklyPlan) {
+            $hasWeeklyPlan = true;
+
+            $weeklyUpdates = DB::table('weekly_update')
+                ->where('user_by', $userId)
+                ->whereYear('weekly_from', $currentYear)
+                ->whereMonth('weekly_from', $currentMonth)
+                ->get();
+
+            // Build month weekly dates with default danger status
+            $daysInMonth = now()->daysInMonth;
+            for ($day = 1; $day <= $daysInMonth; $day++) {
+                $date = \Carbon\Carbon::create($currentYear, $currentMonth, $day);
+
+                $monthWeeklyDates[] = [
+                    'date'     => $date->format('Y-m-d'),
+                    'day_name' => $date->format('l'),
+                    'status'   => 'danger',
+                ];
+            }
+
+            // Mark weekly ranges as primary
+            foreach ($weeklyUpdates as $update) {
+                $from = \Carbon\Carbon::parse($update->weekly_from);
+                $to   = \Carbon\Carbon::parse($update->weekly_to);
+
+                foreach ($monthWeeklyDates as &$day) {
+                    if (\Carbon\Carbon::parse($day['date'])->between($from, $to)) {
+                        $day['status'] = 'primary';
+                    }
+                }
+            }
+        }
+
+        /** ----------------------------
+         *  DAILY EXISTING DATES
+         *-----------------------------*/
+
+        $existingDates = [];
+        $monthDates    = [];
+
+        if ($hasDailyPlan) {
+            $existingDates = DB::table('daily_update')
+                ->where('user_by', $userId)
+                ->whereYear('date_entry', $currentYear)
+                ->whereMonth('date_entry', $currentMonth)
+                ->pluck('date_entry')
+                ->map(fn($d) => date('Y-m-d', strtotime($d)))
+                ->toArray();
+
+            $daysInMonth = now()->daysInMonth;
+
+            for ($day = 1; $day <= $daysInMonth; $day++) {
+                $date = \Carbon\Carbon::create($currentYear, $currentMonth, $day);
+
+                $monthDates[] = [
+                    'date'     => $date->format('Y-m-d'),
+                    'day_name' => $date->format('l'),
+                ];
+            }
+        }
+
+        // *************RD Not SHOW*************
+
+        $rdPlan = DB::table('business_plans_rd')
+            ->where('user_by', $userId)
+            ->first();
+
+        $showRdSection = $rdPlan && $rdPlan->rd_amount > 0;
+
+        // ****************************
+
+        $hasDaily    = $plans->contains('business_category_id', 1);
+        $hasWeekly   = $plans->contains('business_category_id', 2);
+        $hasBiWeekly = $plans->contains('business_category_id', 3);
+        $hasMonthly  = $plans->contains('business_category_id', 4);
+
+        return [
+            'plans'            => $plans,
+            'hasDailyPlan'     => $hasDailyPlan,
+            'offDays'          => $offDays,
+            'existingDates'    => $existingDates,
+            'monthDates'       => $monthDates,
+            'hasWeeklyPlan'    => $hasWeeklyPlan,
+            'weeklyUpdates'    => $weeklyUpdates,
+            'monthWeeklyDates' => $monthWeeklyDates,
+            'showRdSection'    => $showRdSection,
+            'rdPlan'           => $rdPlan,
+            'hasDaily'         => $hasDaily,
+            'hasWeekly'        => $hasWeekly,
+            'hasBiWeekly'      => $hasBiWeekly,
+            'hasMonthly'       => $hasMonthly,
+        ];
+
+    }
 
     public function dailyUpdateAdd()
     {
-        $userId = session('app_user_id');
+        $data           = $this->buildDailyUpdateData();
+        $data['isEdit'] = false;
+        $data['update'] = null;
 
-        // Get only business plans created by this user
-        $plans = DB::table('business_plans')
-            ->where('user_by', $userId)
-            ->select('id', 'business_category_name')
-            ->get();
+        return view('admin.users.dailyUpdateAdd', $data);
+    }
 
-        $isEdit = false;
+    public function dailyUpdateEdit($id)
+    {
+        $data = $this->buildDailyUpdateData();
 
-        return view('admin.users.dailyUpdateAdd', compact('plans', 'isEdit'));
+        $data['isEdit'] = true;
+        $data['update'] = DB::table('daily_update')->where('id', $id)->first();
+        $data['editId'] = $id;
+
+        return view('admin.users.dailyUpdateAdd', $data);
     }
 
     public function dailyUpdateStore(Request $request)
@@ -3991,42 +749,49 @@ END downlinesTree**************************************************
         $plan    = DB::table('business_plans')->where('id', $request->business_plan_id)->first();
 
         DB::table('daily_update')->insert([
-            'user_by'                    => $userId,
-            'add_user_name'              => $appUser->app_u_name ?? 'Unknown',
-            'month_name'                 => $request->month_name,
-            // 'business_plan_id'           => $plan->id,
-            // 'business_plan_name'         => $plan->business_category_name,
-            'date_entry'                 => $request->date_entry,
-            'today_emi'                  => $request->today_emi,
-            'today_close_customers'      => $request->today_close_customers,
-            'today_new_customers'        => $request->today_new_customers,
-            'total_daily_colletion'      => $request->total_daily_colletion,
-            'total_weekly_colletion'     => $request->total_weekly_colletion,
-            'total_bi_weekly_colletion'  => $request->total_bi_weekly_colletion,
-            'total_monthly_colletion'    => $request->total_monthly_colletion,
-            'today_loan_in_ac'           => $request->today_loan_in_ac,
-            'today_loan_in_cash'         => $request->today_loan_in_cash,
-            'today_total_loan_amount'    => $request->today_total_loan_amount,
-            'today_closing_balance_ac'   => $request->today_closing_balance_ac,
-            'today_closing_balance_cash' => $request->today_closing_balance_cash,
-            'rd_amount'                  => $request->rd_amount,
-            'rd_withdrawal'              => $request->rd_withdrawal,
-            'rd_interest'                => $request->rd_interest,
-            'current_balance'            => $request->current_balance,
-            'created_at'                 => now(),
-            'updated_at'                 => now(),
+            'user_by'                    => $userId,                           // User ID from session or request
+            'add_user_name'              => $appUser->app_u_name ?? 'Unknown', // User name or default 'Unknown'
+            /* 'month_name'                 => $request->month_name, */
+            'date_entry'                 => $request->date_entry,                     // Date from input field
+            'today_emi'                  => $request->today_emi,                      // EMI collection
+            'PreviousCarrentBalance'     => $request->PreviousCarrentBalance,         // Previous current balance
+            'PreviousRDBalance'          => $request->PreviousRDBalance ?? 0,         // Previous RD balance
+            'AvailableFund'              => $request->AvailableFund,                  // Available fund
+            'today_close_customers'      => $request->today_close_customers,          // Number of closed customers
+            'today_new_customers'        => $request->today_new_customers,            // New customers today
+            'total_daily_colletion'      => $request->total_daily_colletion ?? 0,     // Daily collection loan
+            'total_weekly_colletion'     => $request->total_weekly_colletion ?? 0,    // Weekly collection loan
+            'total_bi_weekly_colletion'  => $request->total_bi_weekly_colletion ?? 0, // Bi-weekly collection loan
+            'total_monthly_colletion'    => $request->total_monthly_colletion ?? 0,   // Monthly collection loan
+            'InvestmentAmount'           => $request->InvestmentAmount,               // Investment amount
+            'today_loan_in_ac'           => $request->today_loan_in_ac,               // Loan in account today
+            'today_loan_in_cash'         => $request->today_loan_in_cash,             // Loan in cash today
+            'today_total_loan_amount'    => $request->today_total_loan_amount,        // Total loan amount today
+            'today_closing_balance_ac'   => $request->today_closing_balance_ac,       // Closing balance in A/C
+            'today_closing_balance_cash' => $request->today_closing_balance_cash,     // Closing balance in Cash
+            'current_balance'            => $request->current_balance,                // Current balance in hand and account
+            'rd_amount'                  => $request->rd_amount ?? 0,
+            'rd_withdrawal'              => $request->rd_withdrawal ?? 0,
+            'rd_interest'                => $request->rd_interest ?? 0,
+            'created_at'                 => now(), // Timestamp for creation
+            'updated_at'                 => now(), // Timestamp for update
         ]);
 
-        return redirect()->route('daily.update.view')->with('success', 'Daily update saved successfully.');
+        return redirect()->route('daily.update.add')->with('success', 'Daily update saved successfully.');
     }
 
     public function dailyUpdateView()
     {
         $userId   = session('app_user_id');
-        $userName = DB::table('app_users')->where('id', $userId)->value('app_u_name');
+        $userName = DB::table('app_users')
+            ->where('id', $userId)
+            ->value('app_u_name');
+
+        $currentYear = now()->year;
 
         $updates = DB::table('daily_update')
             ->where('user_by', $userId)
+            ->whereYear('date_entry', $currentYear) // <-- FILTER BY CURRENT YEAR
             ->orderByDesc('id')
             ->get();
 
@@ -4036,31 +801,24 @@ END downlinesTree**************************************************
         ]);
     }
 
-    public function dailyUpdateEdit($id)
-    {
-        $update = DB::table('daily_update')->where('id', $id)->first();
-        $plans  = DB::table('business_plans')->select('id', 'business_category_name')->get();
-        $isEdit = true;
-        return view('admin.users.dailyUpdateAdd', compact('update', 'plans', 'isEdit'));
-    }
-
     public function dailyUpdateUpdate(Request $request, $id)
     {
         $plan = DB::table('business_plans')->where('id', $request->business_plan_id)->first();
 
         DB::table('daily_update')->where('id', $id)->update([
 
-            'month_name'                 => $request->month_name,                 // Month name of the daily update
-            'business_plan_id'           => $plan->id,                            // ID from business_plans table
-            'business_plan_name'         => $plan->business_category_name,        // Business plan name from business_plans table
             'date_entry'                 => $request->date_entry,                 // Date of this daily update
             'today_emi'                  => $request->today_emi,                  // EMI collected today
+            'PreviousCarrentBalance'     => $request->PreviousCarrentBalance,     // Previous current balance
+            'PreviousRDBalance'          => $request->PreviousRDBalance,          // Previous RD balance
+            'AvailableFund'              => $request->AvailableFund,              // Available fund
             'today_close_customers'      => $request->today_close_customers,      // Number of customers closed today
             'today_new_customers'        => $request->today_new_customers,        // Number of new customers today
             'total_daily_colletion'      => $request->total_daily_colletion,      // Total daily collection
             'total_weekly_colletion'     => $request->total_weekly_colletion,     // Total weekly collection
             'total_bi_weekly_colletion'  => $request->total_bi_weekly_colletion,  // Total bi-weekly collection
             'total_monthly_colletion'    => $request->total_monthly_colletion,    // Total monthly collection
+            'InvestmentAmount'           => $request->InvestmentAmount,           // Investment amount
             'today_loan_in_ac'           => $request->today_loan_in_ac,           // Loan received in account today
             'today_loan_in_cash'         => $request->today_loan_in_cash,         // Loan received in cash today
             'today_total_loan_amount'    => $request->today_total_loan_amount,    // Total loan amount received today
@@ -4074,12 +832,6 @@ END downlinesTree**************************************************
         ]);
 
         return redirect()->route('daily.update.view')->with('success', 'Daily update updated successfully.');
-    }
-
-    public function dailyUpdateDelete($id)
-    {
-        DB::table('daily_update')->where('id', $id)->delete();
-        return redirect()->route('daily.update.view')->with('success', 'Daily update deleted successfully.');
     }
 
 // === Monthly UPDATE ===
@@ -4126,327 +878,754 @@ END downlinesTree**************************************************
         return redirect()->route('monthly.update.add')->with('success', 'Daily update saved successfully.');
     }
 
+    public function monthlyUpdateView()
+    {
+        $userId   = session('app_user_id');
+        $userName = DB::table('app_users')
+            ->where('id', $userId)
+            ->value('app_u_name');
+
+        $currentYear = now()->year;
+
+        $updates = DB::table('monthly_update')
+            ->where('user_by', $userId)
+            ->whereYear('created_at', $currentYear) // <-- Filter by current year
+            ->orderByDesc('id')
+            ->get();
+
+        return view('admin.users.monthlyUpdateView', [
+            'updates'  => $updates,
+            'userName' => $userName,
+        ]);
+    }
+
+    public function monthlyReportmonth()
+    {
+        $todayMonth = date('n'); // 1-12
+        $todayYear  = date('Y');
+
+        // Determine Financial Year (Apr → Mar)
+        if ($todayMonth < 4) {
+            $fyStartYear = $todayYear - 1;
+            $fyEndYear   = $todayYear;
+        } else {
+            $fyStartYear = $todayYear;
+            $fyEndYear   = $todayYear + 1;
+        }
+
+        // Month labels
+        $monthNames = [
+            1  => 'Jan', 2  => 'Feb', 3  => 'Mar',
+            4  => 'Apr', 5  => 'May', 6  => 'Jun',
+            7  => 'Jul', 8  => 'Aug', 9  => 'Sep',
+            10 => 'Oct', 11 => 'Nov', 12 => 'Dec',
+        ];
+
+        $months = [];
+
+        // April → December
+        for ($m = 4; $m <= 12; $m++) {
+            $months[] = [
+                'month'  => $m,
+                'text'   => $monthNames[$m],
+                'year'   => $fyStartYear,
+                'format' => sprintf('%04d-%02d', $fyStartYear, $m), // YYYY-MM
+            ];
+        }
+
+        // January → March
+        for ($m = 1; $m <= 3; $m++) {
+            $months[] = [
+                'month'  => $m,
+                'text'   => $monthNames[$m],
+                'year'   => $fyEndYear,
+                'format' => sprintf('%04d-%02d', $fyEndYear, $m), // YYYY-MM
+            ];
+        }
+
+                              // Fetch all months for this user
+        $userId          = Session::get('app_user_id'); // or use auth()->id() if logged in
+        $availableMonths = \DB::table('monthly_update')
+            ->where('user_by', $userId)
+            ->pluck('month_name') // ['2025-07', '2025-08', '2025-12']
+            ->toArray();
+
+        // Convert all months to string format just in case
+        $availableMonths = array_map('strval', $availableMonths);
+
+        return view('admin.users.monthlyReportsView', compact('months', 'availableMonths','userId'));
+    }
+
+    public function monthlyUpdateEdit($id)
+    {
+        $update = DB::table('monthly_update')->where('id', $id)->first();
+        $plans  = DB::table('business_plans')->select('id', 'business_category_name')->get();
+        $isEdit = true;
+
+        return view('admin.users.monthlyUpdateAdd', compact('update', 'plans', 'isEdit'));
+    }
+
+    public function monthlyUpdateUpdate(Request $request, $id)
+    {
+
+        DB::table('monthly_update')->where('id', $id)->update([
+            // 'month_name'              => $request->month_name,
+            'director_loan'           => $request->director_loan,
+            'bank_loan'               => $request->bank_loan,
+            'investment_for_invertor' => $request->investment_for_invertor,
+            'director_salary'         => $request->director_salary,
+            'staff_salary'            => $request->staff_salary,
+            'office_rent'             => $request->office_rent,
+            'electricity_bill'        => $request->electricity_bill,
+            'recharge_bill'           => $request->recharge_bill,
+            'furniture_amount'        => $request->furniture_amount,
+            'other_expences'          => $request->other_expences,
+            'updated_at'              => now(),
+        ]);
+
+        return redirect()->route('monthly.update.view')->with('success', 'Monthly update updated successfully.');
+    }
+
 // === RD Add ===
 
     public function businessPlanAddRd()
     {
-        $plans  = DB::table('business_plans')->select('id', 'business_category_name')->get();
-        $isEdit = false;
-        return view('admin.users.businessPlanAddRd', compact('plans', 'isEdit'));
+        $userId = Session::get('app_user_id');
+        $plan   = DB::table('business_plans_rd')->where('user_by', $userId)->first();
+
+        return view('admin.users.businessPlanAddRd', [
+            'plan'   => $plan,
+            'isEdit' => ! empty($plan),
+        ]);
     }
 
     public function businessPlanStoreRd(Request $request)
     {
-        $userId  = Session::get('app_user_id');                           // Get currently logged-in user ID
-        $appUser = DB::table('app_users')->where('id', $userId)->first(); // Fetch user details
+        $userId = Session::get('app_user_id');
 
-        // Insert new RD business plan record
-        DB::table('business_plans_rd')->insert([
-            'user_by'       => $userId,                           // FK to app_users.id, from session
-            'add_user_name' => $appUser->app_u_name ?? 'Unknown', // User name fetched from app_users table
-            'rd_amount'     => $request->rd_amount,               // RD amount deposited
-            'rd_interest'   => $request->rd_interest,             // Interest earned on RD
-            'status'        => 1,                                 // 0=Inactive, 1=Active
-            'created_at'    => now(),                             // Record created at
-            'updated_at'    => now(),                             // Record updated at
-        ]);
+        DB::table('business_plans_rd')->updateOrInsert(
+            ['user_by' => $userId],
+            [
+                'rd_amount'     => $request->rd_amount,
+                'rd_interest'   => $request->rd_interest,
+                'add_user_name' => DB::table('app_users')->where('id', $userId)->value('app_u_name'),
+                'status'        => 1,
+                'updated_at'    => now(),
+                'created_at'    => now(),
+            ]
+        );
 
-        return redirect()->route('business.plan.addRd')->with('success', 'Business Plan RD Added Successfully!');
+        return back()->with('success', 'RD Plan Saved!');
     }
 
 // ******************************************************************
 
-    // Monthly report for Blade or JSON API
-    public function monthlyReport(Request $request, $userId = null)
+    private function calculateToNetSurplusTwo($value)
+    {
+        if ($value <= 0) {
+            return 0;
+        }
+        if ($value <= 5000) {
+            return 50000;
+        }
+
+        if ($value <= 10000) {
+            return 100000;
+        }
+
+        if ($value <= 15000) {
+            return 150000;
+        }
+
+        if ($value <= 20000) {
+            return 200000;
+        }
+
+        if ($value <= 30000) {
+            return 300000;
+        }
+
+        if ($value <= 40000) {
+            return 400000;
+        }
+
+        if ($value <= 50000) {
+            return 500000;
+        }
+
+        return 600000;
+    }
+
+    public function monthlyReport(Request $request, $monthYear = null, $userId = null)
     {
         // Use provided userId or session user
         $userId = $userId ?? Session::get('app_user_id');
 
-        // Fetch data
-        $data = $this->getMonthlyReportData($userId);
+        // Parse monthYear parameter:
+        // Accept '11-2025' or '2025-11' or null (default current month)
+        if ($monthYear) {
+            if (preg_match('/^\d{1,2}-\d{4}$/', $monthYear)) { // 11-2025
+                [$month, $year] = explode('-', $monthYear);
 
-        // Return JSON if URL contains /api/ or request wants JSON
+            } elseif (preg_match('/^\d{4}-\d{1,2}$/', $monthYear)) { // 2025-11
+                [$year, $month] = explode('-', $monthYear);
+            } else {
+                // fallback to current if malformed
+                $month = date('m');
+                $year  = date('Y');
+            }
+        } else {
+            $month = date('m');
+            $year  = date('Y');
+        }
+
+        // normalize as integers
+        $month = (int) $month;
+        $year  = (int) $year;
+
+        // Validate month
+        if ($month < 1 || $month > 12) {
+            $month = (int) date('m');
+        }
+
+        // Fetch data
+        $data = $this->getMonthlyReportData($userId, $year, $month);
+
+        $appUser = DB::table('app_users')->where('id', $userId)->first(); // Fetch user details
+
         if ($request->is('*/api/*') || $request->wantsJson()) {
             return response()->json($data);
         }
 
-        // Otherwise return Blade view
-        return view('admin.reports.monthlyReports', $data);
+        return view('admin.reports.monthlyReports', compact('appUser', 'year', 'month') + $data);
     }
 
-    // Helper function to fetch report data
-    private function getMonthlyReportData($userId)
+   
+
+public function monthlyReportPDF(Request $request, $monthYear = null, $userId = null)
+{
+    // Use existing logic of monthlyReport()
+    $userId = $userId ?? Session::get('app_user_id');
+
+    if ($monthYear) {
+        if (preg_match('/^\d{1,2}-\d{4}$/', $monthYear)) {
+            [$month, $year] = explode('-', $monthYear);
+        } elseif (preg_match('/^\d{4}-\d{1,2}$/', $monthYear)) {
+            [$year, $month] = explode('-', $monthYear);
+        } else {
+            $month = date('m');
+            $year  = date('Y');
+        }
+    } else {
+        $month = date('m');
+        $year  = date('Y');
+    }
+
+    $month = (int) $month;
+    $year  = (int) $year;
+
+    $data = $this->getMonthlyReportData($userId, $year, $month);
+
+    $appUser = DB::table('app_users')->where('id', $userId)->first();
+
+    // Load the same Blade view but convert to PDF
+    $pdf = Pdf::loadView('admin.reports.monthlyReports', 
+            compact('appUser', 'year', 'month') + $data
+        )->setPaper('a4', 'portrait');
+
+    return $pdf->download("Monthly_Report_{$month}_{$year}.pdf");
+}
+
+
+
+
+
+
+
+
+
+/**
+ * getMonthlyReportData - returns all keys used in your previous implementation
+ *
+ * @param int $userId
+ * @param int $year
+ * @param int $month
+ * @return array
+ */
+    private function getMonthlyReportData($userId, $year, $month)
     {
-        // Short Term Borrowing
-        $shortTermRow = DB::selectOne("
-            SELECT SUM(director_loan) AS TotalDirectorLoan
-            FROM monthly_update
-            WHERE user_by = ?
-        ", [$userId]);
+        // Bind params convenience
+        $dailyParams = [$userId, $month, $year];
 
-        // Long Term Borrowing
-        $longTermRow = DB::selectOne("
-            SELECT SUM(bank_loan) AS TotalBankLoan
-            FROM monthly_update
-            WHERE user_by = ?
-        ", [$userId]);
+        // $monthlyParams = [$userId, $month, $year];
 
-        // Membership charge
-        $grandTotalRowMembershipCharge = DB::selectOne("
+        // Create month_name value like "2025-08"
+        $monthName = sprintf('%04d-%02d', $year, $month);
+
+        $monthlyParams = [$userId, $monthName];
+
+        // 1) Aggregates from daily_update (filtered by date_entry month/year)
+        $dailyAggSql = "
         SELECT
-        SUM(
-            CASE
-                WHEN bp.business_category_name = 'Daily' THEN du.total_daily_colletion * bp.membership_per
-                WHEN bp.business_category_name = 'Weekly' THEN du.total_weekly_colletion * bp.membership_per
-                WHEN bp.business_category_name = 'Bi-Weekly' THEN du.total_bi_weekly_colletion * bp.membership_per
-                WHEN bp.business_category_name = 'Monthly' THEN du.total_monthly_colletion * bp.membership_per
-                ELSE 0
-                    END
-                ) AS grand_total_amount
-            FROM daily_update du
-            LEFT JOIN business_plans bp
-                ON bp.user_by = du.user_by
-            WHERE du.user_by = ?
-            GROUP BY du.user_by
-        ", [$userId]);
+            COALESCE(SUM(today_emi), 0) AS toCreditEMI,
 
-        $processingChargeOnePercentage = DB::selectOne("
-        SELECT
-        COALESCE(
-            SUM(total_daily_colletion + total_weekly_colletion + total_bi_weekly_colletion + total_monthly_colletion) * 0.01,
-        0) AS processing_charge
+            COALESCE(SUM(total_daily_colletion),0) AS daily_collection_loan,
+            COALESCE(SUM(total_weekly_colletion),0) AS weekly_collection_loan,
+            COALESCE(SUM(total_bi_weekly_colletion),0) AS bi_weekly_collection_loan,
+            COALESCE(SUM(total_monthly_colletion),0) AS monthly_collection_loan,
+
+            COALESCE(SUM(rd_amount),0) AS total_rd_amount,
+            COALESCE(SUM(rd_withdrawal),0) AS fund_saving_withdraw,
+            COALESCE(SUM(rd_interest),0) AS total_rd_interest,
+
+            COALESCE(SUM(today_closing_balance_ac),0) AS closing_balance_bank,
+            COALESCE(SUM(today_closing_balance_cash),0) AS cash_in_hand,
+
+            COALESCE(SUM(total_daily_colletion + total_weekly_colletion + total_bi_weekly_colletion + total_monthly_colletion) * 0.01, 0) AS processing_charge,
+            COALESCE(SUM(total_daily_colletion + total_weekly_colletion + total_bi_weekly_colletion + total_monthly_colletion) * 0.02, 0) AS insurance_charge
         FROM daily_update
         WHERE user_by = ?
-        ", [$userId]);
+          AND MONTH(date_entry) = ?
+          AND YEAR(date_entry) = ?
+             ";
 
-        $insuranceChargeTwoPercentage = DB::selectOne("
+        $dailyAgg = DB::selectOne($dailyAggSql, $dailyParams);
+
+        $monthlyAggSql = "
+        SELECT
+            COALESCE(SUM(director_loan),0) AS TotalDirectorLoan,
+            COALESCE(SUM(bank_loan),0) AS TotalBankLoan_only,
+            COALESCE(SUM(investment_for_invertor),0) AS TotalInvestment_for_investor,
+
+            COALESCE(SUM(director_salary),0) AS director_salary,
+            COALESCE(SUM(staff_salary),0) AS staff_salary,
+            COALESCE(SUM(other_expences) * 0.01,0) AS staff_uniform_id_card,
+            COALESCE(SUM(other_expences) * 0.02,0) AS staff_training,
+            COALESCE(SUM(other_expences) * 0.2,0) AS customer_awareness_camp,
+            COALESCE(SUM(other_expences) * 0.22,0) AS cultural_programme,
+            COALESCE(SUM(other_expences) * 0.35,0) AS social_welfare_activity,
+            COALESCE(SUM(office_rent),0) AS office_rent,
+            COALESCE(SUM(electricity_bill),0) AS electricity_bill,
+            COALESCE(SUM(recharge_bill),0) AS internet_mobile_recharge,
+            COALESCE(SUM(other_expences) * 0.017,0) AS marketing_cost,
+            COALESCE(SUM(other_expences),0) AS total_other_expences
+       FROM monthly_update
+        WHERE user_by = ?
+          AND month_name = ?
+            ";
+
+        $monthlyAgg = DB::selectOne($monthlyAggSql, $monthlyParams);
+
+        $membershipSql = "
+        SELECT
+            COALESCE(SUM(CASE WHEN bp.business_category_name = 'Daily' THEN (du.total_daily_colletion * bp.membership_charge) / 10000 END), 0) AS Daily,
+            COALESCE(SUM(CASE WHEN bp.business_category_name = 'Weekly' THEN (du.total_weekly_colletion * bp.membership_charge) / 10000 END), 0) AS Weekly,
+            COALESCE(SUM(CASE WHEN bp.business_category_name = 'Bi-Weekly' THEN (du.total_bi_weekly_colletion * bp.membership_charge) / 10000 END), 0) AS BiWeekly,
+            COALESCE(SUM(CASE WHEN bp.business_category_name = 'Monthly' THEN (du.total_monthly_colletion * bp.membership_charge) / 10000 END), 0) AS Monthly,
+            (
+                COALESCE(SUM(CASE WHEN bp.business_category_name = 'Daily' THEN (du.total_daily_colletion * bp.membership_charge) / 10000 END), 0) +
+                COALESCE(SUM(CASE WHEN bp.business_category_name = 'Weekly' THEN (du.total_weekly_colletion * bp.membership_charge) / 10000 END), 0) +
+                COALESCE(SUM(CASE WHEN bp.business_category_name = 'Bi-Weekly' THEN (du.total_bi_weekly_colletion * bp.membership_charge) / 10000 END), 0) +
+                COALESCE(SUM(CASE WHEN bp.business_category_name = 'Monthly' THEN (du.total_monthly_colletion * bp.membership_charge) / 10000 END), 0)
+            ) AS grand_total_amount
+        FROM daily_update du
+        LEFT JOIN business_plans bp ON bp.user_by = du.user_by
+        WHERE du.user_by = ?
+          AND MONTH(du.date_entry) = ?
+          AND YEAR(du.date_entry) = ?
+        GROUP BY du.user_by
+        ";
+
+        $grandTotalRowMembershipCharge = DB::selectOne($membershipSql, $dailyParams);
+
+        // 4) interest amount on microfinance loan (similar structure to membership query)
+        $interestSql = "
+        SELECT
+            (
+                COALESCE(SUM(CASE WHEN bp.business_category_name = 'Daily' THEN (du.total_daily_colletion * bp.interest_amount) / 10000 END), 0) +
+                COALESCE(SUM(CASE WHEN bp.business_category_name = 'Weekly' THEN (du.total_weekly_colletion * bp.interest_amount) / 10000 END), 0) +
+                COALESCE(SUM(CASE WHEN bp.business_category_name = 'Bi-Weekly' THEN (du.total_bi_weekly_colletion * bp.interest_amount) / 10000 END), 0) +
+                COALESCE(SUM(CASE WHEN bp.business_category_name = 'Monthly' THEN (du.total_monthly_colletion * bp.interest_amount) / 10000 END), 0)
+            ) AS IntarestReceivedOnMicrofinanceLoan
+        FROM daily_update du
+        LEFT JOIN business_plans bp ON bp.user_by = du.user_by
+        WHERE du.user_by = ?
+          AND MONTH(du.date_entry) = ?
+          AND YEAR(du.date_entry) = ?
+        GROUP BY du.user_by
+     ";
+
+        $IntarestReceivedOnMicrofinanceLoan = DB::selectOne($interestSql, $dailyParams);
+
+        // 5) fund saving RD query joining business_plans_rd
+        $fundSavingSql = "
+        SELECT
+            COALESCE(SUM(du.rd_amount), 0) AS total_rd_amount,
+            COALESCE(MAX(bp.rd_interest), 0) AS rd_interest,
+            COALESCE(SUM(du.rd_amount) * MAX(bp.rd_interest) / 100, 0) AS fund_saving_amount
+        FROM daily_update du
+        LEFT JOIN business_plans_rd bp ON bp.user_by = du.user_by
+        WHERE du.user_by = ?
+          AND MONTH(du.date_entry) = ?
+          AND YEAR(du.date_entry) = ?
+        GROUP BY du.user_by
+     ";
+        $fundSavingRow = DB::selectOne($fundSavingSql, $dailyParams);
+
+        $penaltySql = "
+        SELECT
+            COALESCE(SUM(other_expences), 0) AS total_other_expences,
+            COALESCE(SUM(other_expences) * 0.015, 0) AS penalty
+     FROM monthly_update
+        WHERE user_by = ?
+          AND month_name = ?
+        GROUP BY user_by
+     ";
+        $penaltyRow = DB::selectOne($penaltySql, $monthlyParams);
+
+        $othersSql = "
+        SELECT
+            COALESCE(SUM(other_expences), 0) AS total_other_expences,
+            COALESCE(SUM(other_expences) * 0.025, 0) AS others
+     FROM monthly_update
+        WHERE user_by = ?
+          AND month_name = ?
+        GROUP BY user_by
+        ";
+        $othersRow = DB::selectOne($othersSql, $monthlyParams);
+
+        $interestPaidOnLoanSql = "
+        SELECT COALESCE(SUM(director_loan) * 0.02, 0) AS interest_paid_on_loan
+        FROM monthly_update
+        WHERE user_by = ?
+          AND month_name = ?
+        GROUP BY user_by
+         ";
+        $interestPaidOnLoanRow = DB::selectOne($interestPaidOnLoanSql, $monthlyParams);
+
+        $otherChargesRowLoanTakenSql = "
+        SELECT COALESCE((SUM(bank_loan) + SUM(investment_for_invertor)) * 0.02, 0) AS other_charges_paid_for_loan_taken
+     FROM monthly_update
+        WHERE user_by = ?
+          AND month_name = ?
+        GROUP BY user_by
+      ";
+        $otherChargesRowLoanTaken = DB::selectOne($otherChargesRowLoanTakenSql, $monthlyParams);
+
+        // 8) paid insurance charge (we used insurance_charge above in dailyAgg)
+        //    monthlyUpdateRow is already aggregated as $monthlyAgg
+
+        // 9) balances (closing sums for the month)
+        /* $balancesSql = "
+        SELECT
+            COALESCE(SUM(today_closing_balance_ac), 0) AS closing_balance_bank,
+            COALESCE(SUM(today_closing_balance_cash), 0) AS cash_in_hand
+        FROM daily_update
+        WHERE user_by = ?
+          AND MONTH(date_entry) = ?
+          AND YEAR(date_entry) = ?
+     ";
+      $balances = DB::selectOne($balancesSql, $dailyParams); */
+
+        // --------------------------------------------
+        // PREVIOUS MONTH CALCULATION // ***********	Opening Balance**************
+        // --------------------------------------------
+        $givenMonth = (int) $month;
+        $givenYear  = (int) $year;
+
+        $prevMonth = $givenMonth - 1;
+        $prevYear  = $givenYear;
+
+        if ($prevMonth === 0) {
+            $prevMonth = 12;
+            $prevYear--;
+        }
+
+        // --------------------------------------------
+        // GET LAST ENTRY OF PREVIOUS MONTH
+        // --------------------------------------------
+        $lastEntrySql = "
+        SELECT MAX(date_entry) AS last_date
+        FROM daily_update
+        WHERE user_by = ?
+          AND MONTH(date_entry) = ?
+          AND YEAR(date_entry) = ?
+        ";
+
+        $lastEntry = DB::selectOne($lastEntrySql, [
+            $userId,
+            $prevMonth,
+            $prevYear,
+        ]);
+
+        // Default object
+        $balances = (object) [
+            'closing_balance_bank' => 0,
+            'cash_in_hand'         => 0,
+        ];
+
+        // --------------------------------------------
+        // IF FOUND → GET BALANCE OF THAT LAST DATE
+        // --------------------------------------------
+        if ($lastEntry && $lastEntry->last_date) {
+
+            $prevBalanceSql = "
+        SELECT
+            today_closing_balance_ac AS closing_balance_bank,
+            today_closing_balance_cash AS cash_in_hand
+        FROM daily_update
+        WHERE user_by = ?
+          AND date_entry = ?
+        LIMIT 1
+         ";
+
+            $result = DB::selectOne($prevBalanceSql, [
+                $userId,
+                $lastEntry->last_date,
+            ]);
+
+            if ($result) {
+                $balances = $result; // MERGED HERE ✔
+            }
+        }
+        // ***********	Opening Balance**************
+
+        // ------------------------------------------------------
+        // CURRENT MONTH LAST ENTRY (Closing Balance - CURRENT)
+        // Right Side → using $givenMonthRightSide, $givenYearRightSide
+        // ------------------------------------------------------
+
+        // --------------------- ensure these are defined ---------------------
+        $givenMonthRightSide = isset($month) ? (int) $month : (int) date('m');
+        $givenYearRightSide  = isset($year) ? (int) $year : (int) date('Y');
+
+        // ------------------------------------------------------
+        // CURRENT MONTH LAST ENTRY (Closing Balance - CURRENT)
+        // Right Side → using $givenMonthRightSide, $givenYearRightSide
+        // ------------------------------------------------------
+
+        $currentLastEntrySql = "
+        SELECT MAX(date_entry) AS last_date
+        FROM daily_update
+        WHERE user_by = ?
+          AND MONTH(date_entry) = ?
+          AND YEAR(date_entry) = ?
+            ";
+
+            $currentLastEntry = DB::selectOne($currentLastEntrySql, [
+                $userId,
+                $givenMonthRightSide,
+                $givenYearRightSide,
+            ]);
+
+            // Default values
+            $currentClosing = (object) [
+                'closing_balance_bank_rightSide' => 0,
+                'cash_in_hand_rightSide'         => 0,
+            ];
+
+            // If last entry exists → fetch closing values
+            if ($currentLastEntry && $currentLastEntry->last_date) {
+
+                $currentBalanceSql = "
             SELECT
-                COALESCE(
-                    SUM(total_daily_colletion + total_weekly_colletion + total_bi_weekly_colletion + total_monthly_colletion) * 0.02,
-                0) AS insurance_charge
+                today_closing_balance_ac AS closing_balance_bank_rightSide,
+                today_closing_balance_cash AS cash_in_hand_rightSide
             FROM daily_update
             WHERE user_by = ?
-        ", [$userId]);
+              AND date_entry = ?
+            LIMIT 1
+             ";
 
-        // Membership charge
-        $IntarestReceivedOnMicrofinanceLoan = DB::selectOne("
-    SELECT
-        SUM(
-            CASE
-                WHEN bp.business_category_name = 'Daily' THEN du.total_daily_colletion * bp.interest_rate
-                WHEN bp.business_category_name = 'Weekly' THEN du.total_weekly_colletion * bp.interest_rate
-                WHEN bp.business_category_name = 'Bi-Weekly' THEN du.total_bi_weekly_colletion * bp.interest_rate
-                WHEN bp.business_category_name = 'Monthly' THEN du.total_monthly_colletion * bp.interest_rate
-                ELSE 0
-                    END
-                ) AS IntarestReceivedOnMicrofinanceLoan
-            FROM daily_update du
-            LEFT JOIN business_plans bp
-                ON bp.user_by = du.user_by
-            WHERE du.user_by = ?
-            GROUP BY du.user_by
-        ", [$userId]);
+                $result = DB::selectOne($currentBalanceSql, [
+                    $userId,
+                    $currentLastEntry->last_date,
+                ]);
 
-        $fundSavingRow = DB::selectOne("
-    SELECT
-        COALESCE(SUM(du.rd_amount), 0) AS total_rd_amount,
-        COALESCE(MAX(bp.rd_interest), 0) AS rd_interest,
-        COALESCE(SUM(du.rd_amount) * MAX(bp.rd_interest) / 100, 0) AS fund_saving_amount
-    FROM daily_update du
-    LEFT JOIN business_plans_rd bp
-        ON bp.user_by = du.user_by
-    WHERE du.user_by = ?
-    GROUP BY du.user_by
-", [$userId]);
+                if ($result) {
+                    $currentClosing = $result; // assign
+                }
+            }
 
-        $penaltyRow = DB::selectOne("
-    SELECT
-        COALESCE(SUM(other_expences), 0) AS total_other_expences,
-        COALESCE(SUM(other_expences) * 0.00015, 0) AS penalty
-    FROM monthly_update
-    WHERE user_by = ?
-    GROUP BY user_by
-", [$userId]);
+            // usage
+            // $closingBankRight = $currentClosing->closing_balance_bank_rightSide;
+            // $closingCashRight  = $currentClosing->cash_in_hand_rightSide;
 
-        $othersRow = DB::selectOne("
-    SELECT
-        COALESCE(SUM(other_expences), 0) AS total_other_expences,
-        COALESCE(SUM(other_expences) * 0.00025, 0) AS others
-    FROM monthly_update
-    WHERE user_by = ?
-    GROUP BY user_by
-", [$userId]);
+            // $closingBankRight = $currentClosing->closing_balance_bank_rightSide;
+            // $closingCashRight = $currentClosing->cash_in_hand_rightSide;
 
-        $CollectionLoan = DB::selectOne("
-    SELECT
-        COALESCE(SUM(total_daily_colletion), 0) AS daily_collection_loan,
-        COALESCE(SUM(total_weekly_colletion), 0) AS weekly_collection_loan,
-        COALESCE(SUM(total_bi_weekly_colletion), 0) AS bi_weekly_collection_loan,
-        COALESCE(SUM(total_monthly_colletion), 0) AS monthly_collection_loan
-    FROM daily_update
-    WHERE user_by = ?
-", [$userId]);
-
-        $fundSavingWithdrawRow = DB::selectOne("
-    SELECT
-        COALESCE(SUM(rd_withdrawal), 0) AS fund_saving_withdraw
-    FROM daily_update
-    WHERE user_by = ?
-    GROUP BY user_by
-", [$userId]);
-
-        $totalRdInterestRow = DB::selectOne("
-    SELECT
-        COALESCE(SUM(rd_interest), 0) AS total_rd_interest
-    FROM daily_update
-    WHERE user_by = ?
-    GROUP BY user_by
-", [$userId]);
-
-        $interestPaidOnLoanRow = DB::selectOne("
-    SELECT
-        COALESCE(SUM(director_loan) * 0.02, 0) AS interest_paid_on_loan
-    FROM monthly_update
-    WHERE user_by = ?
-    GROUP BY user_by
-", [$userId]);
-
-        $otherChargesRowLoanTaken = DB::selectOne("
-    SELECT
-        COALESCE(SUM(bank_loan) * 0.02, 0) AS other_charges_paid_for_loan_taken
-    FROM monthly_update
-    WHERE user_by = ?
-    GROUP BY user_by
-", [$userId]);
-
-        $paidInsuranceChargeRow = DB::selectOne("
-    SELECT
-        COALESCE(
-            (
-                SUM(total_daily_colletion) +
-                SUM(total_weekly_colletion) +
-                SUM(total_bi_weekly_colletion) +
-                SUM(total_monthly_colletion)
-            ) * 0.01, 0
-        ) AS paid_insurance_charge
-    FROM daily_update
-    WHERE user_by = ?
-    GROUP BY user_by
-", [$userId]);
-
-        $monthlyUpdateRow = DB::selectOne("
-    SELECT
-        COALESCE(SUM(director_salary), 0) AS director_salary,
-        COALESCE(SUM(staff_salary), 0) AS staff_salary,
-        COALESCE(SUM(other_expences) * 0.0001, 0) AS staff_uniform_id_card,
-        COALESCE(SUM(other_expences) * 0.0002, 0) AS staff_training,
-        COALESCE(SUM(other_expences) * 0.002, 0) AS customer_awareness_camp,
-        COALESCE(SUM(other_expences) * 0.0022, 0) AS cultural_programme,
-        COALESCE(SUM(other_expences) * 0.0035, 0) AS social_welfare_activity,
-        COALESCE(SUM(office_rent), 0) AS office_rent,
-        COALESCE(SUM(electricity_bill), 0) AS electricity_bill,
-        COALESCE(SUM(recharge_bill), 0) AS internet_mobile_recharge,
-        COALESCE(SUM(other_expences) * 0.00017, 0) AS marketing_cost
-    FROM monthly_update
-    WHERE user_by = ?
-    GROUP BY user_by
-", [$userId]);
-
+            // Now build the left and right arrays exactly as earlier
         $leftSideSum = [
-            'short_term_borrowing'               => $shortTermRow->TotalDirectorLoan ?? 0,
-            'long_term_borrowing'                => $longTermRow->TotalBankLoan ?? 0,
+            'toCreditEMI'                        => $dailyAgg->toCreditEMI ?? 0,
+            'short_term_borrowing'               => $monthlyAgg->TotalDirectorLoan ?? 0,
+            'long_term_borrowing'                => (($monthlyAgg->TotalBankLoan_only ?? 0) + ($monthlyAgg->TotalInvestment_for_investor ?? 0)),
             'membership_charge'                  => $grandTotalRowMembershipCharge->grand_total_amount ?? 0,
-            'processing_charge'                  => $processingChargeOnePercentage->processing_charge ?? 0,
-            'insurance_charge'                   => $insuranceChargeTwoPercentage->insurance_charge ?? 0,
+            'processing_charge'                  => $dailyAgg->processing_charge ?? 0,
+            'insurance_charge'                   => $dailyAgg->insurance_charge ?? 0,
             'IntarestReceivedOnMicrofinanceLoan' => $IntarestReceivedOnMicrofinanceLoan->IntarestReceivedOnMicrofinanceLoan ?? 0,
-            'fund_saving_amount'                 => $fundSavingRow->fund_saving_amount ?? 0,
+            'fund_saving_amount'                 => $fundSavingRow->total_rd_amount ?? 0,
             'penalty'                            => $penaltyRow->penalty ?? 0,
             'others'                             => $othersRow->others ?? 0,
         ];
 
         $rightSideSum = [
-            'daily_collection_loan'             => $CollectionLoan->daily_collection_loan ?? 0,
-            'weekly_collection_loan'            => $CollectionLoan->weekly_collection_loan ?? 0,
-            'bi_weekly_collection_loan'         => $CollectionLoan->bi_weekly_collection_loan ?? 0,
-            'monthly_collection_loan'           => $CollectionLoan->monthly_collection_loan ?? 0,
-            'fund_saving_withdraw'              => $fundSavingWithdrawRow->fund_saving_withdraw ?? 0,
-            'total_rd_interest'                 => $totalRdInterestRow->total_rd_interest ?? 0,
+            'daily_collection_loan'             => $dailyAgg->daily_collection_loan ?? 0,
+            'weekly_collection_loan'            => $dailyAgg->weekly_collection_loan ?? 0,
+            'bi_weekly_collection_loan'         => $dailyAgg->bi_weekly_collection_loan ?? 0,
+            'monthly_collection_loan'           => $dailyAgg->monthly_collection_loan ?? 0,
+            'fund_saving_withdraw'              => $dailyAgg->fund_saving_withdraw ?? 0,
+            'total_rd_interest'                 => $dailyAgg->total_rd_interest ?? 0,
             'interest_paid_on_loan'             => $interestPaidOnLoanRow->interest_paid_on_loan ?? 0,
             'other_charges_paid_for_loan_taken' => $otherChargesRowLoanTaken->other_charges_paid_for_loan_taken ?? 0,
-            'paid_insurance_charge'             => $paidInsuranceChargeRow->paid_insurance_charge ?? 0,
-            'director_salary'                   => $monthlyUpdateRow->director_salary ?? 0,
-            'staff_salary'                      => $monthlyUpdateRow->staff_salary ?? 0,
-            'staff_uniform_id_card'             => $monthlyUpdateRow->staff_uniform_id_card ?? 0,
-            'staff_training'                    => $monthlyUpdateRow->staff_training ?? 0,
-            'customer_awareness_camp'           => $monthlyUpdateRow->customer_awareness_camp ?? 0,
-            'cultural_programme'                => $monthlyUpdateRow->cultural_programme ?? 0,
-            'social_welfare_activity'           => $monthlyUpdateRow->social_welfare_activity ?? 0,
-            'office_rent'                       => $monthlyUpdateRow->office_rent ?? 0,
-            'electricity_bill'                  => $monthlyUpdateRow->electricity_bill ?? 0,
-            'internet_mobile_recharge'          => $monthlyUpdateRow->internet_mobile_recharge ?? 0,
-            'marketing_cost'                    => $monthlyUpdateRow->marketing_cost ?? 0,
+            'paid_insurance_charge'             => $dailyAgg->processing_charge ?? 0/* NOTE: previous code used paid_insurance_charge separately, but processing/insurance handled earlier */,
+            'director_salary'                   => $monthlyAgg->director_salary ?? 0,
+            'staff_salary'                      => $monthlyAgg->staff_salary ?? 0,
+            'staff_uniform_id_card'             => $monthlyAgg->staff_uniform_id_card ?? 0,
+            'staff_training'                    => $monthlyAgg->staff_training ?? 0,
+            'customer_awareness_camp'           => $monthlyAgg->customer_awareness_camp ?? 0,
+            'cultural_programme'                => $monthlyAgg->cultural_programme ?? 0,
+            'social_welfare_activity'           => $monthlyAgg->social_welfare_activity ?? 0,
+            'office_rent'                       => $monthlyAgg->office_rent ?? 0,
+            'electricity_bill'                  => $monthlyAgg->electricity_bill ?? 0,
+            'internet_mobile_recharge'          => $monthlyAgg->internet_mobile_recharge ?? 0,
+            'marketing_cost'                    => $monthlyAgg->marketing_cost ?? 0,
         ];
 
-        // Calculate Other General Cost
-        $otherGeneralCost = array_sum($leftSideSum) - array_sum($rightSideSum);
+        // Opening balances (I use sums inside the same month - keep same names)
+        $opening_cash_in_hand  = $balances->cash_in_hand ?? 0;
+        $opening_cash_in_bank  = $balances->closing_balance_bank ?? 0;
+        $total_opening_balance = (float) $opening_cash_in_hand + (float) $opening_cash_in_bank;
 
-        $rightSideSumTotal = $otherGeneralCost + array_sum($rightSideSum);
+        // left/right totals + other_general_cost calculations (same algorithm as original)
+        $lift_side_gran_total_balance = array_sum($leftSideSum) + (float) $total_opening_balance;
 
-        $balances = DB::selectOne("
-    SELECT
-        COALESCE(SUM(today_closing_balance_ac), 0) AS closing_balance,
-        COALESCE(SUM(today_closing_balance_cash), 0) AS cash_in_hand
-    FROM
-        daily_update
-    WHERE
-        user_by = ?
-    ", [$userId]);
+        $closingBankRight = $currentClosing->closing_balance_bank_rightSide;
+        $closingCashRight = $currentClosing->cash_in_hand_rightSide;
+
+        $total_cloes_balance = (float) $closingBankRight + (float) $closingCashRight;
+
+        // Step 1: temporarily set to 0
+        $other_general_cost = 0;
+
+        // Step 2: calculate right side (initially without general cost)
+        $right_side_round              = array_sum($rightSideSum) + $other_general_cost;
+        $right_side_gran_total_balance = $right_side_round + $total_cloes_balance;
+
+        // Step 3: now calculate the actual general cost difference
+        $other_general_cost = $lift_side_gran_total_balance - $right_side_gran_total_balance;
+
+        // Step 4: recalc right side including other_general_cost
+        $right_side_round              = array_sum($rightSideSum) + $other_general_cost;
+        $right_side_gran_total_balance = $right_side_round + $total_cloes_balance;
+
+        // To Net Surplus
+        $ToNetSurplus = array_sum($leftSideSum) - (array_sum($rightSideSum) + $other_general_cost);
+
+        // Excess Income Over Expenditure (same as before)
+        $ExcessIncomeOver = (array_sum($rightSideSum) + $other_general_cost) + $ToNetSurplus;
+
+        // ToNetSurplus2 logic (original mapping)
+
+        $ToNetSurplus2 = $this->calculateToNetSurplusTwo($ToNetSurplus);
+
+        // Fixed assets distribution (same as original)
+        $FixedAssetsFurniture = $ToNetSurplus2 * 0.4;
+        $FixedAssetsComputer  = $ToNetSurplus2 * 0.2;
+        $FixedAssetsAC        = ($ToNetSurplus2 <= 50000) ? 0 : $ToNetSurplus2 * 0.35;
+        $FixedAssetEquipment  = $ToNetSurplus2 * 0.05;
+
+        $FixedAssetsSum = $FixedAssetsFurniture + $FixedAssetsComputer + $FixedAssetsAC + $FixedAssetEquipment;
+
+        // $BalanceSheetinBank   = ($opening_cash_in_hand ?? 0) + ($opening_cash_in_bank ?? 0);
+        $BalanceSheetinBank   = $total_cloes_balance;
+        $BalanceSheetRightSum = $FixedAssetsSum + $BalanceSheetinBank;
+
+        $LastAccount = $opening_cash_in_hand + $opening_cash_in_bank + $FixedAssetsSum;
+
+        // dd($LastAccount);
+
+        $GeneralFundSum = $LastAccount + $ToNetSurplus;
+
+        $SundryCreditors = $BalanceSheetRightSum - $GeneralFundSum;
+
+        $BalanceSheetLeftSum = $GeneralFundSum + $SundryCreditors;
+
+        // Prepare final returned array (keeps original keys/naming)
 
         return [
-            'short_term_borrowing'               => $shortTermRow->TotalDirectorLoan ?? 0,
-            'long_term_borrowing'                => $longTermRow->TotalBankLoan ?? 0,
+            // Left side start
+            'opening_cash_in_hand'               => $opening_cash_in_hand ?? 0,
+            'opening_cash_in_bank'               => $opening_cash_in_bank ?? 0,
+            'toCreditEMI'                        => $dailyAgg->toCreditEMI ?? 0,
+            'short_term_borrowing'               => $monthlyAgg->TotalDirectorLoan ?? 0,
+            'long_term_borrowing'                => (($monthlyAgg->TotalBankLoan_only ?? 0) + ($monthlyAgg->TotalInvestment_for_investor ?? 0)),
             'membership_charge'                  => $grandTotalRowMembershipCharge->grand_total_amount ?? 0,
-            'processing_charge'                  => $processingChargeOnePercentage->processing_charge ?? 0,
-            'insurance_charge'                   => $insuranceChargeTwoPercentage->insurance_charge ?? 0,
+            'processing_charge'                  => $dailyAgg->processing_charge ?? 0,
+            'insurance_charge'                   => $dailyAgg->insurance_charge ?? 0,
             'IntarestReceivedOnMicrofinanceLoan' => $IntarestReceivedOnMicrofinanceLoan->IntarestReceivedOnMicrofinanceLoan ?? 0,
-            'fund_saving_amount'                 => $fundSavingRow->fund_saving_amount ?? 0,
+            'fund_saving_amount'                 => $fundSavingRow->total_rd_amount ?? 0,
             'penalty'                            => $penaltyRow->penalty ?? 0,
             'others'                             => $othersRow->others ?? 0,
             'leftSideSum'                        => array_sum($leftSideSum) ?? 0,
 
-            // Daily/Weekly/Bi-Weekly/Monthly Collection Loans
-            'daily_collection_loan'              => $CollectionLoan->daily_collection_loan ?? 0,
-            'weekly_collection_loan'             => $CollectionLoan->weekly_collection_loan ?? 0,
-            'bi_weekly_collection_loan'          => $CollectionLoan->bi_weekly_collection_loan ?? 0,
-            'monthly_collection_loan'            => $CollectionLoan->monthly_collection_loan ?? 0,
-            'fund_saving_withdraw'               => $fundSavingWithdrawRow->fund_saving_withdraw ?? 0,
-            'total_rd_interest'                  => $totalRdInterestRow->total_rd_interest ?? 0,
+            'total_opening_balance'              => $total_opening_balance ?? 0,
+            'lift_side_gran_total_balance'       => $lift_side_gran_total_balance ?? 0,
+
+            // Right side start
+            'rightSideSum'                       => array_sum($rightSideSum) ?? 0,
+            'daily_collection_loan'              => $dailyAgg->daily_collection_loan ?? 0,
+            'weekly_collection_loan'             => $dailyAgg->weekly_collection_loan ?? 0,
+            'bi_weekly_collection_loan'          => $dailyAgg->bi_weekly_collection_loan ?? 0,
+            'monthly_collection_loan'            => $dailyAgg->monthly_collection_loan ?? 0,
+            'fund_saving_withdraw'               => $dailyAgg->fund_saving_withdraw ?? 0,
+            'total_rd_interest'                  => $dailyAgg->total_rd_interest ?? 0,
             'interest_paid_on_loan'              => $interestPaidOnLoanRow->interest_paid_on_loan ?? 0,
             'other_charges_paid_for_loan_taken'  => $otherChargesRowLoanTaken->other_charges_paid_for_loan_taken ?? 0,
-            'paid_insurance_charge'              => $paidInsuranceChargeRow->paid_insurance_charge ?? 0,
-            'director_salary'                    => $monthlyUpdateRow->director_salary ?? 0,
-            'staff_salary'                       => $monthlyUpdateRow->staff_salary ?? 0,
-            'staff_uniform_id_card'              => $monthlyUpdateRow->staff_uniform_id_card ?? 0,
-            'staff_training'                     => $monthlyUpdateRow->staff_training ?? 0,
-            'customer_awareness_camp'            => $monthlyUpdateRow->customer_awareness_camp ?? 0,
-            'cultural_programme'                 => $monthlyUpdateRow->cultural_programme ?? 0,
-            'social_welfare_activity'            => $monthlyUpdateRow->social_welfare_activity ?? 0,
-            'office_rent'                        => $monthlyUpdateRow->office_rent ?? 0,
-            'electricity_bill'                   => $monthlyUpdateRow->electricity_bill ?? 0,
-            'internet_mobile_recharge'           => $monthlyUpdateRow->internet_mobile_recharge ?? 0,
-            'marketing_cost'                     => $monthlyUpdateRow->marketing_cost ?? 0,
+            'paid_insurance_charge'              => $dailyAgg->processing_charge ?? 0,
+            'director_salary'                    => $monthlyAgg->director_salary ?? 0,
+            'staff_salary'                       => $monthlyAgg->staff_salary ?? 0,
+            'staff_uniform_id_card'              => $monthlyAgg->staff_uniform_id_card ?? 0,
+            'staff_training'                     => $monthlyAgg->staff_training ?? 0,
+            'customer_awareness_camp'            => $monthlyAgg->customer_awareness_camp ?? 0,
+            'cultural_programme'                 => $monthlyAgg->cultural_programme ?? 0,
+            'social_welfare_activity'            => $monthlyAgg->social_welfare_activity ?? 0,
+            'office_rent'                        => $monthlyAgg->office_rent ?? 0,
+            'electricity_bill'                   => $monthlyAgg->electricity_bill ?? 0,
+            'internet_mobile_recharge'           => $monthlyAgg->internet_mobile_recharge ?? 0,
+            'marketing_cost'                     => $monthlyAgg->marketing_cost ?? 0,
+            'closingBankRight'                   => $closingBankRight ?? 0,
+            'closingCashRight'                   => $closingCashRight ?? 0,
+            'total_cloes_balance'                => $total_cloes_balance ?? 0,
+            'other_general_cost'                 => $other_general_cost ?? 0,
+            'right_side_round'                   => $right_side_round ?? 0,
+            'right_side_gran_total_balance'      => $right_side_gran_total_balance ?? 0,
 
-            // **********************************
-            'other_general_cost'                 => $otherGeneralCost,
-            'rightSideSumTotal'                  => $rightSideSumTotal ?? 0,
+            'ToNetSurplus'                       => $ToNetSurplus ?? 0,
+            'ExcessIncomeOver'                   => $ExcessIncomeOver ?? 0,
 
-            'closing_balance_bank'               => $balances->closing_balance ?? 0,
-            'cash_in_hand'                       => $balances->cash_in_hand ?? 0,
+            // Balance Sheet Right
+            'ToNetSurplus2'                      => $ToNetSurplus2 ?? 0,
+            'FixedAssetsFurniture'               => $FixedAssetsFurniture ?? 0,
+            'FixedAssetsComputer'                => $FixedAssetsComputer ?? 0,
+            'FixedAssetsAC'                      => $FixedAssetsAC ?? 0,
+            'FixedAssetEquipment'                => $FixedAssetEquipment ?? 0,
+            'FixedAssetsSum'                     => $FixedAssetsSum ?? 0,
+            'BalanceSheetinBank'                 => $BalanceSheetinBank ?? 0,
+            'BalanceSheetRightSum'               => $BalanceSheetRightSum ?? 0,
 
+            // Balance Sheet Left
+            'LastAccount'                        => $LastAccount ?? 0,
+            'GeneralFundSum'                     => $GeneralFundSum ?? 0,
+            'SundryCreditors'                    => $SundryCreditors ?? 0,
+            'CashAtBankLeft'                     => $closingBankRight,
+            'CashAtHandLeft'                     => $closingCashRight,
+            'BalanceSheetLeftSum'                => $BalanceSheetLeftSum ?? 0,
         ];
     }
 
 /*
+{{ number_format($FixedAssetsFurniture, 2) }}
+ {{ number_format($rightSideSum + $other_general_cost, 2) }}
  <h3>Short Term Borrowing: {{ $short_term_borrowing }}</h3>
 <h3>Long Term Borrowing: {{ $long_term_borrowing }}</h3>
 <h4>Total Borrowing: {{ $total_borrowing }}</h4>
@@ -4464,6 +1643,52 @@ Number formatting is only for Blade, JSON stays raw.
 */
 
 // *****************************************************************
+
+    public function getPreviousBalance(Request $request)
+    {
+        $date   = $request->input('date');
+        $userId = Session::get('app_user_id');
+
+        // Try to get the previous date (1 day back)
+        $previousDate = date('Y-m-d', strtotime('-1 day', strtotime($date)));
+
+        // Fetch the last day's record for this user
+        $previousRecord = DB::table('daily_update')
+            ->where('user_by', $userId)
+            ->where('date_entry', $previousDate)
+            ->first();
+
+        if (! $previousRecord) {
+            // If no record found for previous day, try 2 days back
+            $previousDate = date('Y-m-d', strtotime('-2 days', strtotime($date)));
+
+            $previousRecord = DB::table('daily_update')
+                ->where('user_by', $userId)
+                ->where('date_entry', $previousDate)
+                ->first();
+        }
+
+        if ($previousRecord) {
+            // Get Current Balance
+            $previousCurrentBalance = $previousRecord->current_balance;
+
+            // Calculate RD Balance
+            $previousRDBalance = $previousRecord->rd_amount - ($previousRecord->rd_withdrawal + $previousRecord->rd_interest);
+
+            $message = 'Previous record found.';
+        } else {
+            // Default values if no previous record found
+            $previousCurrentBalance = 0.00;
+            $previousRDBalance      = 0.00;
+            $message                = 'No previous record found';
+        }
+
+        return response()->json([
+            'previous_balance'    => $previousCurrentBalance,
+            'previous_rd_balance' => $previousRDBalance,
+            'message'             => $message,
+        ]);
+    }
 
 // delete **************************************************
 
@@ -4483,12 +1708,19 @@ Number formatting is only for Blade, JSON stays raw.
         <i class="fa fa-trash"></i>
     </a>
 
+                   <form action="{{ route('generic.delete', ['table' => 'members', 'id' => $company->id]) }}" method="POST" style="display:inline-block;" onsubmit="return confirm('Are you sure want to delete {{ $company->name }}?')">
+                                    @csrf
+                                    <button type="submit" class="btn btn-danger">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                </form>
+
     */
 
     public function deleteFromTable(Request $request, $table, $id)
     {
         // ✅ Only allow specific tables
-        $allowedTables = ['members', 'package_master', 'app_banners'];
+        $allowedTables = ['app_users', 'monthly_update', 'members', 'package_master', 'app_banners', 'business_plans', 'daily_update'];
 
         if (! in_array($table, $allowedTables)) {
             abort(403, 'Unauthorized table access.');

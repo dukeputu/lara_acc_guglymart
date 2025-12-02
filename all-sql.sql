@@ -51,3 +51,43 @@ CREATE TABLE `monthly_update` (
 
 
 
+
+
+
+ALTER TABLE `account_project`.`daily_update`
+ADD `PreviousCarrentBalance` DECIMAL(10,2) NULL DEFAULT '0.00' AFTER `today_emi`,
+ADD `PreviousRDBalance` DECIMAL(10,2) NULL DEFAULT '0.00' AFTER `PreviousCarrentBalance`,
+ADD `AvailableFund` DECIMAL(10,2) NULL DEFAULT '0.00' AFTER `PreviousRDBalance`,
+ADD `InvestmentAmount` DECIMAL(10,2) NULL DEFAULT '0.00' AFTER `total_monthly_colletion`;
+
+
+
+
+
+USE account_project;
+
+ALTER TABLE `daily_update`
+    MODIFY `id` INT(16) NOT NULL AUTO_INCREMENT,
+    MODIFY `user_by` INT(16) UNSIGNED NOT NULL COMMENT 'FK to app_users.id, From Session::get(app_user_id)',
+    MODIFY `business_plan_id` INT(16) DEFAULT NULL COMMENT 'ID from business_plans table',
+    MODIFY `today_close_customers` INT(16) DEFAULT '0' COMMENT 'Number of customers closed today',
+    MODIFY `today_new_customers` INT(16) DEFAULT '0' COMMENT 'Number of new customers today',
+
+    MODIFY `today_emi` DECIMAL(16,2) DEFAULT '0.00' COMMENT 'EMI collected today',
+    MODIFY `PreviousCarrentBalance` DECIMAL(16,2) DEFAULT '0.00',
+    MODIFY `PreviousRDBalance` DECIMAL(16,2) DEFAULT '0.00',
+    MODIFY `AvailableFund` DECIMAL(16,2) DEFAULT '0.00',
+    MODIFY `total_daily_colletion` DECIMAL(16,2) DEFAULT '0.00' COMMENT 'Total daily collection',
+    MODIFY `total_weekly_colletion` DECIMAL(16,2) DEFAULT '0.00' COMMENT 'Total weekly collection',
+    MODIFY `total_bi_weekly_colletion` DECIMAL(16,2) DEFAULT '0.00' COMMENT 'Total bi-weekly collection',
+    MODIFY `total_monthly_colletion` DECIMAL(16,2) DEFAULT '0.00' COMMENT 'Total monthly collection',
+    MODIFY `InvestmentAmount` DECIMAL(16,2) DEFAULT '0.00',
+    MODIFY `today_loan_in_ac` DECIMAL(16,2) DEFAULT '0.00' COMMENT 'Loan received in account today',
+    MODIFY `today_loan_in_cash` DECIMAL(16,2) DEFAULT '0.00' COMMENT 'Loan received in cash today',
+    MODIFY `today_total_loan_amount` DECIMAL(16,2) DEFAULT '0.00' COMMENT 'Total loan amount received today',
+    MODIFY `today_closing_balance_ac` DECIMAL(16,2) DEFAULT '0.00' COMMENT 'Closing account balance today',
+    MODIFY `today_closing_balance_cash` DECIMAL(16,2) DEFAULT '0.00' COMMENT 'Closing cash balance today',
+    MODIFY `rd_amount` DECIMAL(16,2) DEFAULT '0.00',
+    MODIFY `rd_withdrawal` DECIMAL(16,2) DEFAULT '0.00',
+    MODIFY `rd_interest` DECIMAL(16,2) DEFAULT '0.00',
+    MODIFY `current_balance` DECIMAL(16,2) DEFAULT '0.00' COMMENT 'Current total balance';

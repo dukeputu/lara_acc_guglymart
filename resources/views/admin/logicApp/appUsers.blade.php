@@ -32,7 +32,7 @@
 
                                     <th>More</th>
 
-                                    <th>Login</th>
+                                    {{-- <th>Login</th> --}}
                                 </tr>
                             </thead>
                             <tbody>
@@ -54,18 +54,37 @@
                                                 {{ $appUser->status == 1 ? '✅' : '❌' }}
                                             </a>
                                         </td>
-                                        <td>
+                                        {{-- <td>
                                             <button type="button" class="btn btn-info btn-sm" data-toggle="modal"
                                                 data-target="#1bankDetailsModal{{ $index }}">
                                                 View More
                                             </button>
-                                        </td>
-                                        <td>
+                                        </td> --}}
 
-                                            <a target="_blank" href="{{ route('admin.loginAsUser', $appUser->id) }}"
+
+
+                                        <td class="text-center">
+                                            <a id="loginAsUser" target="_blank"
+                                                href="{{ route('admin.loginAsUser', $appUser->id) }}"
                                                 class="btn btn-success btn-sm">
-                                                👤 Login
+                                                <i class="fa fa-sign-in" aria-hidden="true"></i>
+
                                             </a>
+
+                                            <a href="{{ route('user.company.edit', $appUser->id) }}"
+                                                class="btn btn-sm btn-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+
+
+                                            <a href="{{ route('generic.delete', ['table' => 'app_users', 'id' => $appUser->id]) }}"
+                                                onclick="return confirm('Are you sure you want to delete {{ $appUser->app_u_name }}?')"
+                                                class="btn btn-danger">
+                                                <i class="fa fa-trash"></i>
+                                            </a>
+
+
+
                                         </td>
 
 
@@ -129,6 +148,12 @@
                                         </div>
                                     </div>
                                 @endforeach
+
+
+                                <script>
+                                    window.innerWidth < 768 && document.getElementById('loginAsUser')?.removeAttribute('target');
+                                </script>
+
 
                             </tbody>
 

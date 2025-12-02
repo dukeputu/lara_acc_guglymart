@@ -26,7 +26,7 @@
                                     <th>Loan</th>
                                     <th>Interest</th>
                                     <th>Final</th>
-                                    <th>Status</th>
+                                    {{-- <th>Status</th> --}}
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -39,19 +39,25 @@
                                         <td>{{ $plan->loan_amount }}</td>
                                         <td>{{ $plan->interest_rate }}%</td>
                                         <td>{{ $plan->final_amount }}</td>
-                                        <td>
-                                            <a href="{{ route('business.plan.toggle', $plan->id) }}"
-                                                class="btn btn-sm {{ $plan->status == 1 ? 'btn-danger' : 'btn-success' }}">
-                                                {{ $plan->status == 1 ? '✅ Active' : '❌ Inactive' }}
-                                            </a>
-                                        </td>
+
                                         <td>
                                             <a href="{{ route('business.plan.edit', $plan->id) }}"
-                                                class="btn btn-primary btn-sm">✏️ Edit</a>
-                                            <a href="{{ route('business.plan.delete', $plan->id) }}"
-                                                class="btn btn-danger btn-sm"
-                                                onclick="return confirm('Are you sure you want to delete this plan?')">🗑
-                                                Delete</a>
+                                                class="btn btn-primary btn-sm"><i class="fa fa-edit"></i> </a>
+
+
+
+
+
+                                            <a href="{{ route('generic.delete', ['table' => 'business_plans', 'id' => $plan->id]) }}"
+                                                onclick="return confirm('Are you sure you want to delete {{ $plan->business_category_name }}?')"
+                                                class="btn btn-danger">
+                                                <i class="fa fa-trash"></i>
+                                            </a>
+
+
+
+
+
                                         </td>
                                     </tr>
                                 @endforeach

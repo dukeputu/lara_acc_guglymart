@@ -129,3 +129,16 @@ $(document).ready(function() {
     });
 </script>
 
+
+<script>
+document.addEventListener('focusin', e => {
+  if (e.target.tagName === 'INPUT' && e.target.type === 'number') {
+    const el = e.target;
+    el.type = 'text';            // temporarily switch to text so select() works
+    setTimeout(() => el.select(), 0); 
+    el.addEventListener('blur', () => el.type = 'number', { once: true });
+  }
+});
+</script>
+
+

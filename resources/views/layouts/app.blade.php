@@ -13,14 +13,14 @@
     <div class="content-wrapper main-content"> 
 
          <!-- Content Header (Page header) -->
-        <section class="page-header">
+        {{-- <section class="page-header">
           <h1>
             
             @yield('title', 'App')
             <small>Preview</small>
           </h1>
          
-        </section>
+        </section> --}}
 
                 @yield('content')
            

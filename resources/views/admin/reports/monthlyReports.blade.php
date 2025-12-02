@@ -1,3 +1,9 @@
+@php
+    // month and year coming from your $months array
+    $firstDate = \Carbon\Carbon::create($year, $month, 1)->format('d.m.Y');
+    $lastDate  = \Carbon\Carbon::create($year, $month, 1)->endOfMonth()->format('d.m.Y');
+@endphp
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -5,9 +11,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <!-- <link type="text/css" rel="stylesheet" href="resources/sheet.css"> -->
-    <style type="text/css">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+       <style type="text/css">
         /* --------------------- YOUR EXISTING STYLES --------------------- */
         .ritz .waffle a {
             color: inherit;
@@ -304,18 +310,58 @@
             font-weight: bold;
 
         }
+         /* Centering wrapper */
+    .container {
+        width: 100%;
+        margin: 0 auto;
+    }
     </style>
+
+   
+<style>
+    @page {
+        size: A4;
+       margin: 10mm 18mm 10mm 25mm;
+    }
+
+    body {
+        font-family: DejaVu Sans, sans-serif;
+        font-size: 12px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed; /* prevents page overflow */
+    }
+
+    td, th {
+        padding: 4px 6px;
+        vertical-align: top;
+        word-wrap: break-word;
+    }
+
+    /* Optional: set fixed column widths to prevent stretching */
+    .col-25 { width: 25px; }
+    .col-270 { width: 270px; }
+    .col-109 { width: 109px; }
+    .col-116 { width: 116px; }
+
+    /* Force page break where needed */
+    .page-break {
+        page-break-before: always;
+    }
+
+   
+</style>
+
 
 </head>
 
 <body>
 
-
-    @php
-
-    @endphp
-
-    <center>
+ 
+    <div class="container">
 
         <div class="ritz grid-container auto-scale top" dir="ltr">
             <table class="waffle" cellspacing="0" cellpadding="0">
@@ -335,17 +381,25 @@
                 <tbody>
                     <tr style="height: 19px">
 
-                        <td class="s0" colspan="8">TITIR FOUNDATION</td>
+                        <td class="s0" colspan="8">{{ $appUser->app_u_name }}</td>
                     </tr>
                     <tr style="height: 19px">
 
-                        <td class="s1" colspan="8">Vill/Town:41/B Haripada Lane , Udayan Apartment Flat no-5</td>
+                        <td class="s0" colspan="8">CIN No - {{ $appUser->cin_no }}</td>
+                    </tr>
+
+                    <tr style="height: 19px">
+
+                        <td class="s1" colspan="8">{{ $appUser->app_u_address ?? 'NA' }}</td>
+                        {{-- <td class="s1" colspan="8">Vill/Town:41/B Haripada Lane , Udayan Apartment Flat no-5</td> --}}
                     </tr>
                     <tr style="height: 19px">
 
-                        <td class="s2" colspan="8">P.S: Golf Green, Dist: Kolkata, Pin: 700033, West Bengal</td>
+                        <td class="s2" colspan="8">P.S: {{ $appUser->police_station ?? 'NA' }}, Dist:
+                            {{ $appUser->user_district ?? 'NA' }}, Pin: {{ $appUser->pin_code ?? 'NA' }},
+                            {{ $appUser->user_state ?? 'NA' }}</td>
                     </tr>
-                    <tr style="height: 19px">
+                    <tr style="height: 9px">
 
                         <td class="s2"></td>
                         <td class="s2"></td>
@@ -358,7 +412,8 @@
                     </tr>
                     <tr style="height: 19px">
 
-                        <td class="s2" colspan="8">Registration No. IV-1603-00147/2024</td>
+                        <td class="s2" colspan="8" style=" text-decoration: none; ">Mob No -
+                            {{ $appUser->phone_number ?? 'NA' }} | Email Id - {{ $appUser->user_email ?? 'NA' }}</td>
                     </tr>
                     <tr style="height: 19px">
 
@@ -373,7 +428,9 @@
                     </tr>
                     <tr style="height: 19px">
 
-                        <td class="s4" colspan="8">Receipt &amp; Payment Account For The Year Ended 31.03.2024
+                        <td class="s4" colspan="8">
+                            Receipt & Payment Account For The Year {{ $firstDate }} to {{ $lastDate }}
+                            
                         </td>
                     </tr>
                     <tr style="height: 19px">
@@ -464,9 +521,9 @@
                     </tr>
                     <tr style="height: 19px">
 
-                        <td class="s9"></td>
-                        <td class="s9"></td>
-                        <td class="s9"></td>
+                        <td class="s7">To</td>
+                        <td class="s9">Credit EMI</td>
+                        <td class="s10">{{ number_format($toCreditEMI, 2) }}</td>
                         <td class="s9"></td>
                         <td class="s9">By</td>
                         <td class="s9">Other Charges Paid for Loan Taken</td>
@@ -671,7 +728,7 @@
                         <td class="s9"></td>
                         <td class="s7"></td>
                         <td class="s9">Indian Bank, Kolkata Ballygunge Br.</td>
-                        <td class="s10"> {{ number_format($closing_balance_bank, 2) }} </td>
+                        <td class="s10"> {{ number_format($closingBankRight, 2) }} </td>
                         <td class="s9"></td>
                     </tr>
                     <tr style="height: 20px">
@@ -704,7 +761,7 @@
                         <td class="s9"></td>
                         <td class="s7"></td>
                         <td class="s9">Cash In Hand</td>
-                        <td class="s11"> {{ number_format($cash_in_hand, 2) }} </td>
+                        <td class="s11"> {{ number_format($closingCashRight, 2) }} </td>
                         <td class="s9"></td>
                     </tr>
                     <tr style="height: 20px">
@@ -758,53 +815,71 @@
         <div class="ritz grid-container auto-scale" dir="ltr">
             <table class="waffle" cellspacing="0" cellpadding="0">
                 <thead>
-
+                     <tr>
+                        <!-- <th class="row-header freezebar-origin-ltr"></th> -->
+                        <th id="1345355025C0" style="width:25px;" class="column-headers-background"></th>
+                        <th id="1345355025C1" style="width:270px;" class="column-headers-background"></th>
+                        <th id="1345355025C2" style="width:109px;" class="column-headers-background"></th>
+                        <th id="1345355025C3" style="width:116px;" class="column-headers-background"></th>
+                        <th id="1345355025C4" style="width:25px;" class="column-headers-background"></th>
+                        <th id="1345355025C5" style="width:270px;" class="column-headers-background"></th>
+                        <th id="1345355025C6" style="width:109px;" class="column-headers-background"></th>
+                        <th id="1345355025C7" style="width:116px;" class="column-headers-background"></th>
+                    </tr>
                 </thead>
                 <tbody>
-                    <tr style="height: 19px">
+                                       <tr style="height: 19px">
 
-                        <td class="s0" colspan="8">TITIR FOUNDATION</td>
+                        <td class="s0" colspan="8">{{ $appUser->app_u_name }}</td>
                     </tr>
                     <tr style="height: 19px">
 
-                        <td class="s1" colspan="8">Vill/Town:41/B Haripada Lane , Udayan Apartment Flat no-5
+                        <td class="s0" colspan="8">CIN No - {{ $appUser->cin_no }}</td>
+                    </tr>
+
+                    <tr style="height: 19px">
+
+                        <td class="s1" colspan="8">{{ $appUser->app_u_address ?? 'NA' }}</td>
+                        {{-- <td class="s1" colspan="8">Vill/Town:41/B Haripada Lane , Udayan Apartment Flat no-5</td> --}}
+                    </tr>
+                    <tr style="height: 19px">
+
+                        <td class="s2" colspan="8">P.S: {{ $appUser->police_station ?? 'NA' }}, Dist:
+                            {{ $appUser->user_district ?? 'NA' }}, Pin: {{ $appUser->pin_code ?? 'NA' }},
+                            {{ $appUser->user_state ?? 'NA' }}</td>
+                    </tr>
+                    <tr style="height: 9px">
+
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                    </tr>
+                    <tr style="height: 19px">
+
+                        <td class="s2" colspan="8" style=" text-decoration: none; ">Mob No -
+                            {{ $appUser->phone_number ?? 'NA' }} | Email Id - {{ $appUser->user_email ?? 'NA' }}</td>
+                    </tr>
+                    <tr style="height: 19px">
+
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                    </tr>
+                    <tr style="height: 19px">
+
+                        <td class="s4" colspan="8">
+                            Income & Expenditure Account For The Year {{ $firstDate }} to {{ $lastDate }}
                         </td>
-                    </tr>
-                    <tr style="height: 19px">
-
-                        <td class="s2" colspan="8">P.S: Golf Green, Dist: Kolkata, Pin: 700033, West Bengal
-                        </td>
-                    </tr>
-                    <tr style="height: 19px">
-
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                    </tr>
-                    <tr style="height: 19px">
-
-                        <td class="s2" colspan="8">Registration No. IV-1603-00147/2024</td>
-                    </tr>
-                    <tr style="height: 19px">
-
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                    </tr>
-                    <tr style="height: 19px">
-
-                        <td class="s4" colspan="8">Income &amp; Expenditure Account For The Year Ended
-                            31.03.2024</td>
                     </tr>
                     <tr style="height: 19px">
 
@@ -817,11 +892,28 @@
                         <td class="s5">Amount</td>
                         <td class="s5">Amount</td>
                     </tr>
+
+
+                    
                     <tr style="height: 19px">
 
                         <td class="s6">To</td>
                         <td class="s3">Daily Collection Loan</td>
                         <td class="s7"> {{ number_format($daily_collection_loan, 2) }} </td>
+                        <td class="s3"></td>
+                        <td class="s6">By</td>
+                        <td class="s3">Credit EMI</td>
+                        <td class="s7"> {{ number_format($toCreditEMI, 2) }} </td>
+                        <td class="s3"></td>
+                    </tr>
+
+
+
+                    <tr style="height: 19px">
+
+                        <td class="s6">To</td>
+                            <td class="s3">Weekly Collection Loan</td>
+                        <td class="s7"> {{ number_format($weekly_collection_loan, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6">By</td>
                         <td class="s3">Short term borrowing</td>
@@ -831,8 +923,8 @@
                     <tr style="height: 19px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Weekly Collection Loan</td>
-                        <td class="s7"> {{ number_format($weekly_collection_loan, 2) }} </td>
+                      <td class="s3">Biweekly Collection Loan</td>
+                        <td class="s7"> {{ number_format($bi_weekly_collection_loan, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6">By</td>
                         <td class="s3">Long term borrowing</td>
@@ -842,8 +934,8 @@
                     <tr style="height: 19px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Biweekly Collection Loan</td>
-                        <td class="s7"> {{ number_format($bi_weekly_collection_loan, 2) }} </td>
+                         <td class="s3">Monthly Loan</td>
+                        <td class="s7"> {{ number_format($monthly_collection_loan, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6">By</td>
                         <td class="s3">Membership charge</td>
@@ -853,8 +945,8 @@
                     <tr style="height: 19px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Monthly Loan</td>
-                        <td class="s7"> {{ number_format($monthly_collection_loan, 2) }} </td>
+                       <td class="s3">Fund Saving Withdraw</td>
+                        <td class="s7"> {{ number_format($fund_saving_withdraw, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6">By</td>
                         <td class="s3">Processing charge</td>
@@ -864,8 +956,8 @@
                     <tr style="height: 19px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Fund Saving Withdraw</td>
-                        <td class="s7"> {{ number_format($fund_saving_withdraw, 2) }} </td>
+                              <td class="s3">Interest paid on Fund Saving Amount</td>
+                        <td class="s7"> {{ number_format($total_rd_interest, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6">By</td>
                         <td class="s3">Insurance charge</td>
@@ -875,8 +967,8 @@
                     <tr style="height: 19px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Interest paid on Fund Saving Amount</td>
-                        <td class="s7"> {{ number_format($total_rd_interest, 2) }} </td>
+                     <td class="s3">Interest Paid on Loan Taken</td>
+                        <td class="s7"> {{ number_format($interest_paid_on_loan, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6">By</td>
                         <td class="s3">Intarest Received on Microfinance Loan</td>
@@ -886,8 +978,8 @@
                     <tr style="height: 19px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Interest Paid on Loan Taken</td>
-                        <td class="s7"> {{ number_format($interest_paid_on_loan, 2) }} </td>
+                                      <td class="s3">Other Charges Paid for Loan Taken</td>
+                        <td class="s7"> {{ number_format($other_charges_paid_for_loan_taken, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6">By</td>
                         <td class="s3">Fund Saving Amount</td>
@@ -897,8 +989,8 @@
                     <tr style="height: 19px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Other Charges Paid for Loan Taken</td>
-                        <td class="s7"> {{ number_format($other_charges_paid_for_loan_taken, 2) }} </td>
+                              <td class="s3">Insurance Charge</td>
+                        <td class="s7"> {{ number_format($insurance_charge, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6">By</td>
                         <td class="s3">Penalty</td>
@@ -908,8 +1000,8 @@
                     <tr style="height: 19px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Insurance Charge</td>
-                        <td class="s7"> {{ number_format($insurance_charge, 2) }} </td>
+                        <td class="s3">Director Salary</td>
+                        <td class="s7"> {{ number_format($director_salary, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6">By</td>
                         <td class="s3">Others</td>
@@ -919,8 +1011,8 @@
                     <tr style="height: 19px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Director Salary</td>
-                        <td class="s7"> {{ number_format($director_salary, 2) }} </td>
+                                        <td class="s3">Staff Salary</td>
+                        <td class="s7"> {{ number_format($staff_salary, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6"></td>
                         <td class="s3"></td>
@@ -930,18 +1022,7 @@
                     <tr style="height: 19px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Staff Salary</td>
-                        <td class="s7"> {{ number_format($staff_salary, 2) }} </td>
-                        <td class="s3"></td>
-                        <td class="s6"></td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                    </tr>
-                    <tr style="height: 19px">
-
-                        <td class="s6">To</td>
-                        <td class="s3">Staff Uniform & ID Card</td>
+                    <td class="s3">Staff Uniform & ID Card</td>
                         <td class="s7"> {{ number_format($staff_uniform_id_card, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6"></td>
@@ -949,7 +1030,7 @@
                         <td class="s3"></td>
                         <td class="s3"></td>
                     </tr>
-                    <tr style="height: 20px">
+                    <tr style="height: 19px">
 
                         <td class="s6">To</td>
                         <td class="s3">Staff Training</td>
@@ -963,7 +1044,7 @@
                     <tr style="height: 20px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Customer Awareness Camp</td>
+                            <td class="s3">Customer Awareness Camp</td>
                         <td class="s7"> {{ number_format($customer_awareness_camp, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6"></td>
@@ -974,7 +1055,7 @@
                     <tr style="height: 20px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Cultural Programme</td>
+                  <td class="s3">Cultural Programme</td>
                         <td class="s7"> {{ number_format($cultural_programme, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6"></td>
@@ -996,7 +1077,7 @@
                     <tr style="height: 20px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Office Rent</td>
+                                 <td class="s3">Office Rent</td>
                         <td class="s7"> {{ number_format($office_rent, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6"></td>
@@ -1007,7 +1088,7 @@
                     <tr style="height: 20px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Electricity Bill</td>
+                <td class="s3">Electricity Bill</td>
                         <td class="s7"> {{ number_format($electricity_bill, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6"></td>
@@ -1018,7 +1099,7 @@
                     <tr style="height: 20px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Mobile Recharge & Wi-Fi Bill</td>
+                       <td class="s3">Mobile Recharge & Wi-Fi Bill</td>
                         <td class="s7"> {{ number_format($internet_mobile_recharge, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6"></td>
@@ -1029,7 +1110,7 @@
                     <tr style="height: 20px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Marketing Cost</td>
+                     <td class="s3">Marketing Cost</td>
                         <td class="s7"> {{ number_format($marketing_cost, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s6"></td>
@@ -1040,8 +1121,22 @@
                     <tr style="height: 20px">
 
                         <td class="s6">To</td>
-                        <td class="s3">Other General Cost</td>
+                      <td class="s3">Other General Cost</td>
                         <td class="s11"> {{ number_format($other_general_cost, 2) }} </td>
+                        <td class="s3"></td>
+                        <td class="s6"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                    </tr>
+                    <tr style="height: 20px">
+
+                        {{-- <td class="s6">To</td>
+                        <td class="s3">Other General Cost</td>
+                        <td class="s11"> {{ number_format($other_general_cost, 2) }} </td> --}}
+                        <td class="s3"></td>
+                        <td class="s3"></td>
+                        <td class="s3"></td>
                         <td class="s3"></td>
                         <td class="s3"></td>
                         <td class="s3"></td>
@@ -1116,32 +1211,54 @@
         <div class="ritz grid-container auto-scale" dir="ltr">
             <table class="waffle" cellspacing="0" cellpadding="0">
                 <thead>
-                  
+                     <tr>
+                        <!-- <th class="row-header freezebar-origin-ltr"></th> -->
+                        <th id="1345355025C0" style="width:25px;" class="column-headers-background"></th>
+                        <th id="1345355025C1" style="width:270px;" class="column-headers-background"></th>
+                        <th id="1345355025C2" style="width:109px;" class="column-headers-background"></th>
+                        <th id="1345355025C3" style="width:116px;" class="column-headers-background"></th>
+                        <th id="1345355025C4" style="width:25px;" class="column-headers-background"></th>
+                        <th id="1345355025C5" style="width:270px;" class="column-headers-background"></th>
+                        <th id="1345355025C6" style="width:109px;" class="column-headers-background"></th>
+                        <th id="1345355025C7" style="width:116px;" class="column-headers-background"></th>
+                    </tr>
                 </thead>
                 <tbody>
-                    <tr style="height: 19px">
-                        <td class="s0" colspan="8">TITIR FOUNDATION</td>
+                                       <tr style="height: 19px">
+
+                        <td class="s0" colspan="8">{{ $appUser->app_u_name }}</td>
                     </tr>
                     <tr style="height: 19px">
-                        <td class="s1" colspan="8">Vill/Town:41/B Haripada Lane , Udayan Apartment Flat no-5
-                        </td>
+
+                        <td class="s0" colspan="8">CIN No - {{ $appUser->cin_no }}</td>
+                    </tr>
+
+                    <tr style="height: 19px">
+
+                        <td class="s1" colspan="8">{{ $appUser->app_u_address ?? 'NA' }}</td>
+                        {{-- <td class="s1" colspan="8">Vill/Town:41/B Haripada Lane , Udayan Apartment Flat no-5</td> --}}
                     </tr>
                     <tr style="height: 19px">
-                        <td class="s2" colspan="8">P.S: Golf Green, Dist: Kolkata, Pin: 700033, West Bengal
-                        </td>
+
+                        <td class="s2" colspan="8">P.S: {{ $appUser->police_station ?? 'NA' }}, Dist:
+                            {{ $appUser->user_district ?? 'NA' }}, Pin: {{ $appUser->pin_code ?? 'NA' }},
+                            {{ $appUser->user_state ?? 'NA' }}</td>
+                    </tr>
+                    <tr style="height: 9px">
+
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
+                        <td class="s2"></td>
                     </tr>
                     <tr style="height: 19px">
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                        <td class="s2"></td>
-                    </tr>
-                    <tr style="height: 19px">
-                        <td class="s2" colspan="8">Registration No. IV-1603-00147/2024</td>
+
+                        <td class="s2" colspan="8" style=" text-decoration: none; ">Mob No -
+                            {{ $appUser->phone_number ?? 'NA' }} | Email Id - {{ $appUser->user_email ?? 'NA' }}</td>
                     </tr>
                     <tr style="height: 19px">
                         <td class="s3"></td>
@@ -1154,7 +1271,8 @@
                         <td class="s3"></td>
                     </tr>
                     <tr style="height: 19px">
-                        <td class="s4" colspan="8">Balance Sheet As On 31.03.2024</td>
+                        <td class="s4" colspan="8">Balance Sheet As On {{ $firstDate }} to {{ $lastDate }}</td>
+
                     </tr>
                     <tr style="height: 19px">
                         <td class="s5"></td>
@@ -1171,7 +1289,7 @@
                         <td class="s3"></td>
                         <td class="s3"></td>
                         <td class="s3"></td>
-                        <td class="s6">Fixed Assets</td>
+                        <td class="s8">Fixed Assets</td>
                         <td class="s3"></td>
                         <td class="s3"></td>
                         <td class="s3"></td>
@@ -1179,9 +1297,9 @@
                     <tr style="height: 19px">
                         <td class="s3">As Per Last Account</td>
                         <td class="s3"></td>
-                        <td class="s7"> 88,900.00 </td>
+                        <td class="s7"> {{ number_format($LastAccount, 2) }} </td>
                         <td class="s3"></td>
-                        <td class="s8">Furniture</td>
+                        <td class="s3">Furniture</td>
                         <td class="s3"></td>
                         <td class="s3"></td>
                         <td class="s3"></td>
@@ -1189,19 +1307,19 @@
                     <tr style="height: 19px">
                         <td class="s3">Add: Net Surplus</td>
                         <td class="s3"></td>
-                        <td class="s9"> 12,730.00 </td>
+                        <td class="s9"> {{ number_format($ToNetSurplus, 2) }} </td>
                         <td class="s3"></td>
                         <td class="s3">As Per Last A/c</td>
                         <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s9"> 45,500.00 </td>
+                        <td class="s3">{{ number_format($FixedAssetsFurniture, 2) }}</td>
+                        <td class="s9"></td>
                     </tr>
                     <tr style="height: 19px">
                         <td class="s3">(Excess Income Over Expenditure)</td>
                         <td class="s3"></td>
                         <td class="s10"></td>
                         <td class="s3"></td>
-                        <td class="s8" dir="ltr">Computer & Laptop</td>
+                        <td class="s3" dir="ltr">Computer & Printer</td>
                         <td class="s3"></td>
                         <td class="s3"></td>
                         <td class="s7"></td>
@@ -1210,21 +1328,43 @@
                         <td class="s3"></td>
                         <td class="s3"></td>
                         <td class="s11"></td>
-                        <td class="s9"> 101,630.00 </td>
+                        <td class="s9"> {{ number_format($GeneralFundSum, 2) }} </td>
                         <td class="s3">As Per Last A/c</td>
                         <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s9"> 38,900.00 </td>
+                        <td class="s3">{{ number_format($FixedAssetsComputer, 2) }}</td>
+                        <td class="s9"></td>
                     </tr>
+                    @if ($ToNetSurplus2 > 50000)
+                        <tr style="height: 19px">
+                            <td class="s3"></td>
+                            <td class="s3"></td>
+                            <td class="s3"></td>
+                            <td class="s3"></td>
+                            <td class="s3" dir="ltr">Laptop & Mobile</td>
+                            <td class="s3"></td>
+                            <td class="s3"></td>
+                            <td class="s3"></td>
+                        </tr>
+                        <tr style="height: 19px">
+                            <td class="s3"></td>
+                            <td class="s3"></td>
+                            <td class="s3"></td>
+                            <td class="s3"></td>
+                            <td class="s3">As Per Last A/c</td>
+                            <td class="s3"></td>
+                            <td class="s3">{{ number_format($FixedAssetsAC, 2) }}</td>
+                            <td></td>
+                        </tr>
+                    @endif
                     <tr style="height: 19px">
                         <td class="s3"></td>
                         <td class="s3"></td>
                         <td class="s3"></td>
                         <td class="s3"></td>
-                        <td class="s8" dir="ltr">Air Conditioner (AC)</td>
+                        <td class="s3 " dir="ltr">Office Equipment</td>
                         <td class="s3"></td>
                         <td class="s3"></td>
-                        <td class="s3"></td>
+                        <td class="s9" dir="ltr"></td>
                     </tr>
                     <tr style="height: 19px">
                         <td class="s3"></td>
@@ -1233,27 +1373,7 @@
                         <td class="s3"></td>
                         <td class="s3">As Per Last A/c</td>
                         <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td></td>
-                    </tr>
-                    <tr style="height: 19px">
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s8" dir="ltr">Office Equipment</td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s9" dir="ltr"> 30,000.00 </td>
-                    </tr>
-                    <tr style="height: 19px">
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
-                        <td class="s3">As Per Last A/c</td>
-                        <td class="s3"></td>
-                        <td class="s3"></td>
+                        <td class="s11">{{ number_format($FixedAssetEquipment, 2) }}</td>
                         <td class="s3"></td>
                     </tr>
                     <tr style="height: 19px">
@@ -1264,7 +1384,7 @@
                         <td class="s3"></td>
                         <td class="s3"></td>
                         <td class="s3"></td>
-                        <td class="s9" dir="ltr"> 6,000.00 </td>
+                        <td class="s9" dir="ltr"> {{ number_format($FixedAssetsSum, 2) }} </td>
                     </tr>
                     <tr style="height: 19px">
                         <td class="s3"></td>
@@ -1290,7 +1410,7 @@
                         <td class="s3">Add:Sundry Creditors</td>
                         <td class="s3"></td>
                         <td class="s3"></td>
-                        <td class="s9" dir="ltr"> 36,000.00 </td>
+                        <td class="s9" dir="ltr"> {{ number_format($SundryCreditors, 2) }} </td>
                         <td class="s8">Cash at Bank</td>
                         <td class="s3"></td>
                         <td class="s3"></td>
@@ -1303,7 +1423,7 @@
                         <td class="s3"></td>
                         <td class="s3">Indian Bank, Kolkata Ballygunge Br.</td>
                         <td class="s3"></td>
-                        <td class="s9"> - </td>
+                        <td class="s9"> {{ number_format($CashAtBankLeft, 2) }} </td>
                         <td class="s3"></td>
                     </tr>
                     <tr style="height: 19px">
@@ -1333,7 +1453,7 @@
                         <td class="s3"></td>
                         <td class="s3">Cash In Hand</td>
                         <td class="s3"></td>
-                        <td class="s11"> 17,230.00 </td>
+                        <td class="s11"> {{ number_format($CashAtHandLeft, 2) }} </td>
                         <td class="s3"></td>
                     </tr>
                     <tr style="height: 20px">
@@ -1344,7 +1464,7 @@
                         <td class="s3"></td>
                         <td class="s3"></td>
                         <td class="s3"></td>
-                        <td class="s9"> 17,230.00 </td>
+                        <td class="s9"> {{ number_format($BalanceSheetinBank, 2) }} </td>
                     </tr>
                     <tr style="height: 20px">
                         <td class="s3"></td>
@@ -1370,11 +1490,11 @@
                         <td class="s3"></td>
                         <td class="s3"></td>
                         <td class="s3"></td>
-                        <td class="s13"> 137,630.00 </td>
+                        <td class="s13"> {{ number_format($BalanceSheetLeftSum, 2) }} </td>
                         <td class="s3"></td>
                         <td></td>
                         <td class="s3"></td>
-                        <td class="s13"> 137,630.00 </td>
+                        <td class="s13"> {{ number_format($BalanceSheetRightSum, 2) }} </td>
                     </tr>
                 </tbody>
             </table>
@@ -1388,8 +1508,7 @@
 
 
 
-    </center>
-
+    </div>
 </body>
 
 </html>

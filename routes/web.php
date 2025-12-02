@@ -25,11 +25,8 @@ Route::get('/logout-user-app', [LoginController::class, 'logout'])->name('logout
 
 Route::get('/user-logout', [LoginController::class, 'userLogout'])->name('user.Logout');
 // 🧍‍♂️ User app register
-Route::get('/register-user-app', function () {
-    return view('userApp.userAppView.userRegister');
-})->name('userRegister.app');
+Route::get('/register-user-app', function () {return view('userApp.userAppView.userRegister');})->name('userRegister.app');
 
-Route::post('/register-user-app', [MemberController::class, 'registerUserApp'])->name('registerUserApp.userApp');
 // 🧍‍♂️ User app login
 // User App Login Routes
 Route::get('/admin-login-as-user/{userId}', [MemberController::class, 'adminLoginAsUser'])->name('admin.loginAsUser');
@@ -40,6 +37,16 @@ Route::get('/get-introducer/{id}', [MemberController::class, 'getIntroducer']);
 
 // 🔒 Protected Routes for Logged-in Members
 Route::middleware(['auth.member'])->group(function () {
+
+    // DAILY UPDATE ROUTES
+    Route::prefix('user-company')->group(function () {
+
+        Route::get('/add', [MemberController::class, 'addUserCompany'])->name('user.company.add');
+        Route::post('/store', [MemberController::class, 'registerUserApp'])->name('user.company.store');
+        Route::get('/view', [MemberController::class, 'appUsersAdminPanelList'])->name('user.company.view');
+        Route::get('/edit/{id}', [MemberController::class, 'editUserCompany'])->name('user.company.edit');
+        Route::put('/update/{id}', [MemberController::class, 'companyUpdateUpdate'])->name('company.update.update');
+    });
 
     // Dashboard
     Route::get('/dashbord', [MemberController::class, 'index'])
@@ -52,8 +59,6 @@ Route::middleware(['auth.member'])->group(function () {
     // **************All Logic App Auth URLs Start******************************
 
     Route::get('/add-company', [MemberController::class, 'adminCreate'])->name('addAdmin.adminCreate');
-
-    Route::get('/add-user', function () {return view('admin.logicApp.addAppUsers');})->name('addCompany.User');
 
     Route::post('/add-company', [MemberController::class, 'adminStore'])->name('addAdmin.adminStore');
     Route::get('/edit-company/{id}', [MemberController::class, 'adminEdit'])->name('addAdmin.adminEdit');
@@ -70,8 +75,6 @@ Route::middleware(['auth.member'])->group(function () {
 
     Route::get('/app-banners', [MemberController::class, 'appBannerView'])->name('appBannerView.list');
     Route::post('/app-banners', [MemberController::class, 'appBannerPost'])->name('appBannerView.store');
-
-    Route::get('/app-users-list-admin-panel', [MemberController::class, 'appUsersAdminPanelList'])->name('appUsers.listAdminPanel');
 
     Route::get('/add-balance-request-list', [MemberController::class, 'appUsersAdminPanelList'])->name('addBalanceRequest.list');
 
@@ -196,33 +199,44 @@ Route::middleware(['auth.userapp'])->group(function () {
     Route::prefix('business-plan-rd')->group(function () {
         Route::get('/add', [MemberController::class, 'businessPlanAddRd'])->name('business.plan.addRd');
         Route::post('/store', [MemberController::class, 'businessPlanStoreRd'])->name('business.plan.storeRd');
-        Route::get('/view', [MemberController::class, 'businessPlanViewRd'])->name('business.plan.viewRd');
-        Route::get('/edit/{id}', [MemberController::class, 'businessPlanEditRd'])->name('business.plan.editRd');
-        Route::post('/update/{id}', [MemberController::class, 'businessPlanUpdateRd'])->name('business.plan.updateRd');
-        Route::get('/delete/{id}', [MemberController::class, 'businessPlanDeleteRd'])->name('business.plan.delete');
     });
 
-   // DAILY UPDATE ROUTES
+    // DAILY UPDATE ROUTES
     Route::prefix('daily-update')->group(function () {
         Route::get('/add', [MemberController::class, 'dailyUpdateAdd'])->name('daily.update.add');
         Route::post('/store', [MemberController::class, 'dailyUpdateStore'])->name('daily.update.store');
+        // Weekly routes
+        Route::post('/store-weekly', [MemberController::class, 'storeWeeklyUpdate'])->name('weekly.update.store');
         Route::get('/view', [MemberController::class, 'dailyUpdateView'])->name('daily.update.view');
         Route::get('/edit/{id}', [MemberController::class, 'dailyUpdateEdit'])->name('daily.update.edit');
         Route::put('/update/{id}', [MemberController::class, 'dailyUpdateUpdate'])->name('daily.update.update');
         Route::delete('/delete/{id}', [MemberController::class, 'dailyUpdateDelete'])->name('daily.update.delete');
+        Route::get('/get-previous-balance', [MemberController::class, 'getPreviousBalance'])->name('daily.update.getPreviousBalance');
+
     });
 
     // Monthly UPDATE ROUTES
-        Route::prefix('monthly')->group(function () {
-            Route::get('/add', [MemberController::class, 'monthlyUpdateAdd'])->name('monthly.update.add');
-            Route::post('/store', [MemberController::class, 'monthlyUpdateStore'])->name('monthly.update.store');
+    Route::prefix('monthly')->group(function () {
+        Route::get('/add', [MemberController::class, 'monthlyUpdateAdd'])->name('monthly.update.add');
+        Route::post('/store', [MemberController::class, 'monthlyUpdateStore'])->name('monthly.update.store');
+        Route::get('/view', [MemberController::class, 'monthlyUpdateView'])->name('monthly.update.view');
+        Route::get('/edit/{id}', [MemberController::class, 'monthlyUpdateEdit'])->name('monthly.update.edit');
+        Route::put('/update/{id}', [MemberController::class, 'monthlyUpdateUpdate'])->name('monthly.update.update');
 
-            // Blade view route
-            Route::get('/report', [MemberController::class, 'monthlyReport'])->name('monthly.update.report');
+        // Blade view route
+        // Route::get('/report', [MemberController::class, 'monthlyReport'])->name('monthly.update.report');
+        Route::get('/report/{monthYear?}', [MemberController::class, 'monthlyReport'])->name('monthly.update.report');
 
-            // JSON API route with userId
-            Route::get('/report/api/{userId}', [MemberController::class, 'monthlyReport'])->name('monthly.update.report.api');
-        });
+Route::get('/report/pdf/{monthYear?}/{userId?}', [MemberController::class, 'monthlyReportPDF'])->name('monthly.report.pdf');
+
+
+
+
+        Route::get('/report-month', [MemberController::class, 'monthlyReportmonth'])->name('monthly.update.month');
+
+        // JSON API route with userId
+        Route::get('/report/api/{userId}', [MemberController::class, 'monthlyReport'])->name('monthly.update.report.api');
+    });
 
 });
 
@@ -238,7 +252,7 @@ Route::get('/user-app-settings', function () {
 
 // ************************************************
 
-// Route::get('/delete/{table}/{id}', [MemberController::class, 'deleteFromTable'])->name('generic.delete');
-Route::post('/delete/{table}/{id}', [MemberController::class, 'deleteFromTable'])->name('generic.delete');
+Route::get('/delete/{table}/{id}', [MemberController::class, 'deleteFromTable'])->name('generic.delete');
+// Route::post('/delete/{table}/{id}', [MemberController::class, 'deleteFromTable'])->name('generic.delete');
 
 // ************************************************

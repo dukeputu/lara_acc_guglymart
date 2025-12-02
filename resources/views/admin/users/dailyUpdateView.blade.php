@@ -1,3 +1,8 @@
+@php
+    $adminSession = session('member_id');
+@endphp
+
+
 @extends('layouts.user')
 @section('title', 'App User List')
 
@@ -22,8 +27,8 @@
                             <thead class="table-dark text-center">
                                 <tr>
                                     <th>SL No</th>
-                                    <th>Month</th>
-                                    <th>Category</th>
+                                    {{-- <th>Month</th>
+                                    <th>Category</th> --}}
                                     <th>EMI</th>
                                     <th>Investment</th>
                                     <th>Expense</th>
@@ -35,27 +40,29 @@
                                 @foreach ($updates as $index => $u)
                                     <tr>
                                         <td class="text-center">{{ $index + 1 }}</td>
-                                        <td>{{ $u->month_name }}</td>
-                                        <td>{{ $u->business_plan_name ?? 'N/A' }}</td>
+
                                         <td>₹{{ number_format($u->today_emi, 2) }}</td>
                                         <td>₹{{ number_format($u->total_daily_colletion, 2) }}</td>
                                         <!-- mapped as today_investment -->
                                         <td>₹{{ number_format($u->today_total_loan_amount, 2) }}</td>
                                         <!-- mapped as today_expense -->
                                         <td>{{ \Carbon\Carbon::parse($u->date_entry)->format('d M, Y') }}</td>
+
+
                                         <td class="text-center">
                                             <a href="{{ route('daily.update.edit', $u->id) }}"
                                                 class="btn btn-sm btn-primary">
-                                                <i class="fas fa-edit"></i> Edit
+                                                <i class="fas fa-edit"></i>
                                             </a>
+                                            @if ($adminSession)
+                                                <a href="{{ route('generic.delete', ['table' => 'daily_update', 'id' => $u->id]) }}"
+                                                    onclick="return confirm('Are you sure you want to delete {{ \Carbon\Carbon::parse($u->date_entry)->format('d M, Y') }}?')"
+                                                    class="btn btn-danger">
+                                                    <i class="fa fa-trash"></i>
+                                                </a>
+                                            @endif
 
-                                            <form action="{{ route('daily.update.delete', $u->id) }}" method="POST"
-                                                style="display:inline-block;"
-                                                onsubmit="return confirm('Are you sure you want to delete this record?');">
-                                                <button type="submit" class="btn btn-sm btn-danger">
-                                                    <i class="fas fa-trash-alt"></i> Delete
-                                                </button>
-                                            </form>
+
                                         </td>
                                     </tr>
                                 @endforeach

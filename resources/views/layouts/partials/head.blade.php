@@ -31,6 +31,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
 <style>
+    html {
+  scroll-behavior: smooth;
+}
 input[type="text"] {
   text-transform: uppercase;
 }
@@ -1327,7 +1330,7 @@ input[type="text"] {
 
         .form-control:disabled,
         .form-control[readonly] {
-            background: yellow;
+            /* background: yellow; */
             color: #64748b;
         }
 
@@ -1574,6 +1577,48 @@ input[type="text"] {
         width: 100%;
         border-radius: 5px;
     }
+
+
+.metric-icon {
+    border-radius: 15px;
+    display: inline-block;
+    font-size: 12px;
+    margin-bottom: 15px;
+    position: relative;
+    z-index: 1;
+    padding: 7px 6px;
+    font-weight: 900;
+}
+
+    .metric-icon.primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.metric-icon.warning {
+    background: linear-gradient(135deg, #ffd43b, #fab005);
+    color: #000;
+}
+.metric-icon.blackBg {
+    background: linear-gradient(135deg, #000, #010101);
+    color: #fff;
+}
+
+.metric-icon.danger {
+    background: linear-gradient(135deg, red, #ff0026);
+    color: white;
+}
+
+
+.metric-icon.success {
+    background: linear-gradient(135deg, green, #37b24d);
+    color: white;
+}
+
+.metric-icon.primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
 </style>
 
 
